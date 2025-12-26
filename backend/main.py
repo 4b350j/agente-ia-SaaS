@@ -25,7 +25,7 @@ safety_settings = [
 ]
 
 # Usamos este modelo que aparecía en tu lista y suele ser estable
-model = genai.GenerativeModel('gemini-1.5-flash', safety_settings=safety_settings)
+model = genai.GenerativeModel('gemini-2.5-flash', safety_settings=safety_settings)
 
 app = FastAPI()
 
@@ -77,5 +77,6 @@ async def chat_agent(request: ChatRequest):
         print(f"❌ Error en chat: {e}")
 
         return {"response": "*tos* *tos* (Error técnico en el servidor Python. Mira la terminal para más detalles)."}
+
 
 
