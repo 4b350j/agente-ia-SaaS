@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
 
-// 👇👇👇 ¡REVISA QUE TU URL ESTÉ ASÍ (SIN BARRA AL FINAL)! 👇👇👇
-const API_URL = "https://agente-ia-saas.onrender.com"  
-// 👆👆👆 --------------------------------------------------- 👆👆👆
+// 👇👇👇 TU URL DE RENDER AQUÍ 👇👇👇
+const API_URL = "https://agente-ia-saas.onrender.com" 
+// 👆👆👆 ----------------------- 👆👆👆
 
 interface Message {
   sender: 'user' | 'agent';
@@ -16,8 +16,6 @@ export default function App() {
   const [messages, setMessages] = useState<Message[]>([])
   const [inputMsg, setInputMsg] = useState('')
   const [loading, setLoading] = useState(false)
-  
-  // Detectar móvil
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
@@ -28,83 +26,80 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    // Scroll automático al final
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  // 1. CREAR AGENTE (CON PROTECCIÓN ANTI-CRASH)
+  // --- LÓGICA (IGUAL QUE ANTES) ---
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      console.log("Intentando conectar a:", `${API_URL}/api/agents`)
-      
       const res = await fetch(`${API_URL}/api/agents`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ name, persona })
       })
-
-      if (!res.ok) {
-        throw new Error(`Error del servidor: ${res.status}`)
-      }
-
+      if (!res.ok) throw new Error("Error en servidor")
       const data = await res.json()
-      
-      // Protección: Si no hay mensaje, ponemos uno por defecto
-      const welcomeText = data.welcome_msg || "¡Hola! Estoy listo (Sistema recuperado)."
-      
-      setMessages([{ sender: 'agent', text: welcomeText }])
+      setMessages([{ sender: 'agent', text: data.welcome_msg || "Sistema iniciado correctamente." }])
       setChatStarted(true)
-
     } catch (err: any) {
-      // ESTO TE DIRÁ QUÉ ESTÁ PASANDO EN EL MÓVIL
-      alert('🔴 ERROR: ' + err.message + '\n\nRevisa la URL en App.tsx')
-      console.error(err)
+      alert('Error de conexión: ' + err.message)
     }
     setLoading(false)
   }
 
-  // 2. ENVIAR MENSAJE
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!inputMsg.trim()) return
-
     const newHistory = [...messages, { sender: 'user', text: inputMsg } as Message]
     setMessages(newHistory)
     setInputMsg('')
     setLoading(true)
-
     try {
       const res = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          name,
-          persona,
-          history: newHistory.slice(1),
-          message: inputMsg
-        })
+        body: JSON.stringify({ name, persona, history: newHistory.slice(1), message: inputMsg })
       })
       const data = await res.json()
-      // Protección contra respuestas vacías
-      const replyText = data.response || "..."
-      setMessages(prev => [...prev, { sender: 'agent', text: replyText }])
-    } catch (err) {
-      console.error(err)
-    }
+      setMessages(prev => [...prev, { sender: 'agent', text: data.response || "..." }])
+    } catch (err) { console.error(err) }
     setLoading(false)
   }
 
-  // ESTILOS (Igual que antes)
+  // --- ESTILOS "ENTERPRISE CLEAN" ---
+  const colors = {
+    bg: '#f3f4f6', // Gris muy claro de fondo
+    cardBg: '#ffffff', // Blanco puro para tarjetas
+    textMain: '#111827', // Negro suave
+    textSec: '#6b7280', // Gris texto secundario
+    primary: '#2563eb', // Azul Royal (Seguridad/Confianza)
+    primaryHover: '#1d4ed8',
+    border: '#e5e7eb', // Bordes sutiles
+    userBubble: '#2563eb',
+    agentBubble: '#f3f4f6'
+  }
+
   const containerStyle: React.CSSProperties = {
-    minHeight: '100vh', background: '#0f172a', color: '#e2e8f0', fontFamily: 'Segoe UI, sans-serif',
+    minHeight: '100vh', background: colors.bg, color: colors.textMain, fontFamily: '"Inter", "Segoe UI", sans-serif',
     display: 'flex', justifyContent: 'center', alignItems: isMobile ? 'flex-start' : 'center', padding: isMobile ? '0' : '20px'
   }
+  
   const cardStyle: React.CSSProperties = {
-    width: isMobile ? '100%' : '900px', height: isMobile ? '100vh' : '85vh', background: '#1e293b',
-    borderRadius: isMobile ? '0' : '20px', boxShadow: isMobile ? 'none' : '0 20px 50px rgba(0,0,0,0.5)',
-    overflow: 'hidden', display: 'flex', flexDirection: isMobile ? 'column' : 'row'
+    width: isMobile ? '100%' : '1000px', height: isMobile ? '100vh' : '85vh', background: colors.cardBg,
+    borderRadius: isMobile ? '0' : '12px', boxShadow: isMobile ? 'none' : '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+    overflow: 'hidden', display: 'flex', flexDirection: isMobile ? 'column' : 'row', border: isMobile ? 'none' : `1px solid ${colors.border}`
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', background: '#f9fafb', border: `1px solid ${colors.border}`, padding: '12px', borderRadius: '6px', 
+    color: colors.textMain, outline: 'none', fontSize: '0.95rem', transition: 'border 0.2s'
+  }
+
+  const buttonStyle: React.CSSProperties = {
+    padding: '12px', background: colors.primary, color: 'white', border: 'none', borderRadius: '6px', 
+    fontWeight: '600', cursor: 'pointer', fontSize: '0.95rem', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
   }
 
   const showSidebar = !isMobile || (isMobile && !chatStarted)
@@ -114,38 +109,67 @@ export default function App() {
     <div style={containerStyle}>
       <div style={cardStyle}>
         
-        {/* PANEL IZQUIERDO */}
+        {/* PANEL CONFIGURACIÓN */}
         {showSidebar && (
-          <div style={{ width: isMobile ? '100%' : '35%', padding: '30px', background: '#0f172a', display: 'flex', flexDirection: 'column', height: isMobile ? '100%' : 'auto' }}>
-            <h2 style={{ color: '#38bdf8', marginBottom: '20px' }}>🤖 LAB IA</h2>
-            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
-              <div><label>NOMBRE</label><input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Jarvis" /></div>
-              <div><label>PERSONALIDAD</label><textarea style={{...inputStyle, height: '120px'}} value={persona} onChange={e => setPersona(e.target.value)} /></div>
-              <button disabled={loading} style={{...buttonStyle, marginTop: 'auto'}}>{loading ? 'CONECTANDO...' : 'INICIAR'}</button>
+          <div style={{ width: isMobile ? '100%' : '350px', padding: '32px', background: '#ffffff', borderRight: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ marginBottom: '32px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '32px', height: '32px', background: colors.primary, borderRadius: '6px' }}></div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>Nexus AI</h2>
+            </div>
+            
+            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '24px', flex: 1 }}>
+              <div>
+                <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '8px' }}>NOMBRE DEL ASISTENTE</label>
+                <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Consultor Legal" />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '8px' }}>INSTRUCCIÓN DEL SISTEMA</label>
+                <textarea style={{...inputStyle, height: '140px', resize: 'none'}} value={persona} onChange={e => setPersona(e.target.value)} placeholder="Define el rol y las restricciones de seguridad..." />
+              </div>
+              <div style={{ marginTop: 'auto' }}>
+                <p style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '16px', textAlign: 'center' }}>🔒 Conexión segura con Gemini 2.5</p>
+                <button disabled={loading} style={{...buttonStyle, width: '100%'}}>{loading ? 'Conectando...' : 'Iniciar Sesión Segura'}</button>
+              </div>
             </form>
           </div>
         )}
 
-        {/* PANEL DERECHO */}
+        {/* PANEL CHAT */}
         {showChat && (
-          <div style={{ width: isMobile ? '100%' : '65%', display: 'flex', flexDirection: 'column', background: '#1e293b', height: '100%' }}>
-            {isMobile && <div style={{ padding: '15px', background: '#0f172a', display: 'flex', gap: '10px' }}><button onClick={() => setChatStarted(false)}>⬅</button><b>{name}</b></div>}
-            
-            <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#f9fafb' }}>
+            {/* Cabecera Chat */}
+            <div style={{ padding: '16px 24px', background: 'white', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}>
+              {isMobile && <button onClick={() => setChatStarted(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>⬅</button>}
+              <div style={{ width: '10px', height: '10px', background: '#10b981', borderRadius: '50%' }}></div>
+              <span style={{ fontWeight: '600', color: '#111827' }}>{name}</span>
+            </div>
+
+            <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {messages.map((msg, idx) => (
                 <div key={idx} style={{ 
                   alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                  background: msg.sender === 'user' ? '#38bdf8' : '#334155',
-                  color: msg.sender === 'user' ? '#0f172a' : '#f1f5f9',
-                  padding: '12px 18px', borderRadius: '15px', maxWidth: '85%'
-                }}>{msg.text}</div>
+                  maxWidth: '80%'
+                }}>
+                  <div style={{ 
+                    background: msg.sender === 'user' ? colors.userBubble : colors.agentBubble,
+                    color: msg.sender === 'user' ? 'white' : '#1f2937',
+                    padding: '12px 16px', 
+                    borderRadius: '12px',
+                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                    border: msg.sender === 'agent' ? `1px solid ${colors.border}` : 'none',
+                    lineHeight: '1.5'
+                  }}>
+                    {msg.text}
+                  </div>
+                </div>
               ))}
+              {loading && <div style={{ alignSelf: 'flex-start', color: '#9ca3af', fontSize: '0.85rem', marginLeft: '10px' }}>Generando respuesta segura...</div>}
               <div ref={chatEndRef} />
             </div>
 
-            <form onSubmit={handleSend} style={{ padding: '15px', background: '#0f172a', display: 'flex', gap: '10px' }}>
-              <input value={inputMsg} onChange={e => setInputMsg(e.target.value)} placeholder="..." style={{ ...inputStyle, flex: 1 }} />
-              <button disabled={loading} style={buttonStyle}>➤</button>
+            <form onSubmit={handleSend} style={{ padding: '24px', background: 'white', borderTop: `1px solid ${colors.border}`, display: 'flex', gap: '12px' }}>
+              <input value={inputMsg} onChange={e => setInputMsg(e.target.value)} placeholder="Escriba su consulta..." style={{ ...inputStyle, background: 'white' }} />
+              <button disabled={loading} style={{...buttonStyle, padding: '0 24px'}}>Enviar</button>
             </form>
           </div>
         )}
@@ -154,6 +178,4 @@ export default function App() {
   )
 }
 
-const inputStyle = { width: '100%', background: '#1e293b', border: '1px solid #334155', padding: '15px', borderRadius: '10px', color: 'white', outline: 'none' } as React.CSSProperties
-const buttonStyle = { padding: '15px', background: '#38bdf8', color: '#0f172a', border: 'none', borderRadius: '10px', fontWeight: 'bold' } as React.CSSProperties
 
