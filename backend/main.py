@@ -28,7 +28,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    "tu-proyecto.onrender.com" # <--- ¡PON TU DOMINIO DE RENDER AQUÍ!
+    "https://agente-ia-saas.onrender.com" # <--- ¡PON TU DOMINIO DE RENDER AQUÍ!
 ]
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
 
@@ -170,6 +170,7 @@ def chat(request: Request, req_body: ChatRequest):
         return {"response": response.text}
     except Exception:
         return {"response": "Error temporal del servicio."}
+
 
 
 
