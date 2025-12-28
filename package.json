@@ -16,5 +16,6 @@
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "@supabase/supabase-js": "^2.89.0"
+    "@sentry/react": "^10.32.1"
   }
 }
