@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
 // 👇👇👇 TUS DATOS AQUÍ 👇👇👇
-const API_URL = "https://agente-ia-saas.onrender.com " 
+const API_URL = "https://agente-ia-saas.onrender.com" 
 const SUPABASE_URL = "https://bvmwdavonhknysvfnybi.supabase.co"
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2bXdkYXZvbmhrbnlzdmZueWJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4OTYyNDQsImV4cCI6MjA4MjQ3MjI0NH0.DJwhA13v9JoU_Oa7f3XZafxlSYlwBNcJdBb35ujNmpA"
 // 👆👆👆 ------------------- 👆👆👆
@@ -251,4 +251,5 @@ export default function App() {
     </div>
   )
 }
+
 
