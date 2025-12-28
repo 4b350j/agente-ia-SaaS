@@ -1,27 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
-// 👇👇👇 ZONA DE CONFIGURACIÓN (Rellena esto) 👇👇👇
+// 👇👇👇 ZONA DE CONFIGURACIÓN (Rellena esto otra vez) 👇👇👇
 
-// 1. Tu URL del Backend (Render) - ¡SIN barra al final!
 const API_URL = "https://agente-ia-saas.onrender.com" 
-
-// 2. Tu URL de Supabase (Project URL)
 const SUPABASE_URL = "https://bvmwdavonhknysvfnybi.supabase.co"
-
-// 3. Tu Clave de Supabase (anon public key)
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2bXdkYXZvbmhrbnlzdmZueWJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4OTYyNDQsImV4cCI6MjA4MjQ3MjI0NH0.DJwhA13v9JoU_Oa7f3XZafxlSYlwBNcJdBb35ujNmpA"
 
-// 👆👆👆 ------------------------------------------ 👆👆👆
+// 👆👆👆 ------------------------------------------------ 👆👆👆
 
-// Iniciamos la conexión con la Base de Datos
+// Cliente Supabase
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 interface Message {
-  id?: number;
   sender: 'user' | 'agent';
   text: string;
-  created_at?: string;
 }
 
 export default function App() {
@@ -32,8 +25,13 @@ export default function App() {
   const [inputMsg, setInputMsg] = useState('')
   const [loading, setLoading] = useState(false)
   
-  // ID de Sesión (Para recuperar el chat si recargas la página)
-  const [sessionId, setSessionId] = useState(() => {
+  // --- NUEVO: ESTADOS PARA EL PDF ---
+  const [pdfText, setPdfText] = useState('')       // Aquí guardamos el contenido del libro/PDF
+  const [pdfName, setPdfName] = useState('')       // Nombre del archivo (ej: manual.pdf)
+  const [uploading, setUploading] = useState(false)
+  // ----------------------------------
+
+  const [sessionId] = useState(() => {
     const saved = localStorage.getItem('chat_session_id')
     return saved || crypto.randomUUID()
   })
@@ -43,13 +41,9 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem('chat_session_id', sessionId)
-    // Cargar historial antiguo al iniciar
-    loadHistory()
-  }, [])
-
-  useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
+    loadHistory()
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
@@ -57,33 +51,48 @@ export default function App() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  // --- FUNCIÓN: Cargar historial de Supabase ---
   const loadHistory = async () => {
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('session_id', sessionId)
-      .order('created_at', { ascending: true })
-
+    const { data } = await supabase.from('messages').select('*').eq('session_id', sessionId).order('created_at', { ascending: true })
     if (data && data.length > 0) {
-      // Convertimos el formato de la DB al formato de la App
-      const history = data.map((msg: any) => ({
-        sender: msg.role,
-        text: msg.content
-      }))
-      setMessages(history)
-      setChatStarted(true) // Si hay historial, saltamos directo al chat
+      setMessages(data.map((msg: any) => ({ sender: msg.role, text: msg.content })))
+      setChatStarted(true)
     }
   }
 
-  // --- FUNCIÓN: Guardar mensaje en Supabase ---
   const saveMessageToDB = async (role: 'user' | 'agent', content: string) => {
-    await supabase.from('messages').insert([
-      { session_id: sessionId, role: role, content: content }
-    ])
+    await supabase.from('messages').insert([{ session_id: sessionId, role, content }])
   }
 
-  // 1. Crear Agente (Solo si no hay historial previo)
+  // --- NUEVO: FUNCIÓN PARA SUBIR ARCHIVOS ---
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const res = await fetch(`${API_URL}/api/upload`, {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!res.ok) throw new Error('Error al subir')
+      
+      const data = await res.json()
+      setPdfText(data.extracted_text) // Guardamos el texto del PDF en memoria
+      setPdfName(data.filename)
+      alert('✅ Documento analizado correctamente. La IA ahora conoce su contenido.')
+      
+    } catch (err) {
+      alert('Error subiendo archivo. Asegúrate de que es un PDF.')
+      console.error(err)
+    }
+    setUploading(false)
+  }
+  // ------------------------------------------
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -94,63 +103,51 @@ export default function App() {
         body: JSON.stringify({ name, persona })
       })
       const data = await res.json()
-      
-      const welcomeText = data.welcome_msg || "Sistema iniciado."
-      
-      // Guardamos en estado y en DB
-      setMessages([{ sender: 'agent', text: welcomeText }])
-      saveMessageToDB('agent', welcomeText)
-      
+      const welcome = data.welcome_msg || "Sistema listo."
+      setMessages([{ sender: 'agent', text: welcome }])
+      saveMessageToDB('agent', welcome)
       setChatStarted(true)
-    } catch (err: any) {
-      alert('Error: ' + err.message)
-    }
+    } catch (err: any) { alert('Error: ' + err.message) }
     setLoading(false)
   }
 
-  // 2. Enviar Mensaje
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!inputMsg.trim()) return
 
-    // 1. Mostrar mensaje del usuario inmediatamente
     const userMsg = inputMsg
     setMessages(prev => [...prev, { sender: 'user', text: userMsg }])
     setInputMsg('')
     setLoading(true)
-
-    // 2. Guardar mensaje del usuario en DB (en segundo plano)
     saveMessageToDB('user', userMsg)
 
     try {
-      // 3. Enviar a la IA
+      // ENVIAMOS EL CONTEXTO DEL PDF (Si existe)
       const res = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ 
           name, 
           persona, 
-          history: messages, // Enviamos contexto
-          message: userMsg 
+          history: messages, 
+          message: userMsg,
+          context: pdfText // <--- AQUÍ VA LA MAGIA DEL PDF
         })
       })
       const data = await res.json()
       const reply = data.response || "..."
-
-      // 4. Mostrar y Guardar respuesta de la IA
       setMessages(prev => [...prev, { sender: 'agent', text: reply }])
       saveMessageToDB('agent', reply)
-
     } catch (err) { console.error(err) }
     setLoading(false)
   }
 
-  // --- ESTILOS (Mismo diseño Enterprise) ---
+  // --- ESTILOS ---
   const colors = { bg: '#f3f4f6', cardBg: '#ffffff', textMain: '#111827', primary: '#2563eb', border: '#e5e7eb', userBubble: '#2563eb', agentBubble: '#f3f4f6' }
   const containerStyle: React.CSSProperties = { minHeight: '100vh', background: colors.bg, color: colors.textMain, fontFamily: '"Inter", sans-serif', display: 'flex', justifyContent: 'center', alignItems: isMobile ? 'flex-start' : 'center', padding: isMobile ? '0' : '20px' }
   const cardStyle: React.CSSProperties = { width: isMobile ? '100%' : '1000px', height: isMobile ? '100vh' : '85vh', background: colors.cardBg, borderRadius: isMobile ? '0' : '12px', boxShadow: isMobile ? 'none' : '0 10px 25px rgba(0,0,0,0.1)', overflow: 'hidden', display: 'flex', flexDirection: isMobile ? 'column' : 'row', border: isMobile ? 'none' : `1px solid ${colors.border}` }
   const inputStyle: React.CSSProperties = { width: '100%', background: '#f9fafb', border: `1px solid ${colors.border}`, padding: '12px', borderRadius: '6px', outline: 'none' }
-  const buttonStyle: React.CSSProperties = { padding: '12px', background: colors.primary, color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' }
+  const buttonStyle: React.CSSProperties = { padding: '12px', background: colors.primary, color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', width: '100%' }
 
   return (
     <div style={containerStyle}>
@@ -158,10 +155,20 @@ export default function App() {
         {(!isMobile || !chatStarted) && (
           <div style={{ width: isMobile ? '100%' : '350px', padding: '32px', borderRight: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '32px', color: colors.primary }}>Nexus AI 🧠</h2>
-            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '24px', flex: 1 }}>
-              <div><label style={{fontWeight:'600', fontSize:'0.85rem'}}>NOMBRE</label><input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Abogado Virtual" /></div>
-              <div><label style={{fontWeight:'600', fontSize:'0.85rem'}}>INSTRUCCIÓN</label><textarea style={{...inputStyle, height: '140px'}} value={persona} onChange={e => setPersona(e.target.value)} /></div>
-              <div style={{marginTop:'auto'}}><button disabled={loading} style={{...buttonStyle, width:'100%'}}>{loading ? 'Conectando...' : 'Iniciar Sesión'}</button></div>
+            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
+              <div><label style={{fontWeight:'600', fontSize:'0.85rem'}}>NOMBRE</label><input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Analista Legal" /></div>
+              <div><label style={{fontWeight:'600', fontSize:'0.85rem'}}>INSTRUCCIÓN</label><textarea style={{...inputStyle, height: '100px'}} value={persona} onChange={e => setPersona(e.target.value)} placeholder="Ej: Eres un experto en contratos..." /></div>
+              
+              {/* --- ZONA DE UPLOAD NUEVA --- */}
+              <div style={{ padding: '15px', background: '#eff6ff', borderRadius: '8px', border: '1px dashed #2563eb' }}>
+                <label style={{fontWeight:'600', fontSize:'0.85rem', color: '#1e40af', display: 'block', marginBottom: '8px'}}>📂 CONOCIMIENTO (PDF)</label>
+                <input type="file" accept="application/pdf" onChange={handleFileUpload} style={{ fontSize: '0.8rem' }} disabled={uploading} />
+                {uploading && <p style={{fontSize:'0.8rem', color:'#2563eb'}}>Analizando documento...</p>}
+                {pdfName && <p style={{fontSize:'0.8rem', color:'#15803d', marginTop:'5px'}}>✅ {pdfName} cargado</p>}
+              </div>
+              {/* ---------------------------- */}
+
+              <div style={{marginTop:'auto'}}><button disabled={loading} style={buttonStyle}>{loading ? 'Conectando...' : 'Iniciar Sesión'}</button></div>
             </form>
           </div>
         )}
@@ -169,7 +176,8 @@ export default function App() {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#f9fafb' }}>
             <div style={{ padding: '16px 24px', background: 'white', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', gap: '16px' }}>
               {isMobile && <button onClick={() => setChatStarted(false)}>⬅</button>}
-              <span style={{ fontWeight: '600' }}>Sesión Activa</span>
+              <span style={{ fontWeight: '600' }}>{name || 'Asistente'}</span>
+              {pdfName && <span style={{ fontSize:'0.8rem', background:'#dcfce7', color:'#166534', padding:'4px 8px', borderRadius:'10px' }}>📄 Leyendo: {pdfName}</span>}
             </div>
             <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {messages.map((msg, idx) => (
@@ -180,8 +188,8 @@ export default function App() {
               <div ref={chatEndRef} />
             </div>
             <form onSubmit={handleSend} style={{ padding: '24px', background: 'white', borderTop: `1px solid ${colors.border}`, display: 'flex', gap: '12px' }}>
-              <input value={inputMsg} onChange={e => setInputMsg(e.target.value)} placeholder="Escriba aquí..." style={{ ...inputStyle, background: 'white' }} />
-              <button disabled={loading} style={{...buttonStyle, padding: '0 24px'}}>Enviar</button>
+              <input value={inputMsg} onChange={e => setInputMsg(e.target.value)} placeholder="Pregunta sobre el documento..." style={{ ...inputStyle, background: 'white' }} />
+              <button disabled={loading} style={{...buttonStyle, width:'auto', padding:'0 24px'}}>Enviar</button>
             </form>
           </div>
         )}
@@ -189,5 +197,3 @@ export default function App() {
     </div>
   )
 }
-
-
