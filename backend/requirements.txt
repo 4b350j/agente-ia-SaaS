@@ -5,3 +5,4 @@ python-multipart
 pypdf
 slowapi
 pip-audit
+sentry-sdk
