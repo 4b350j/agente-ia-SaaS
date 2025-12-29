@@ -93,4 +93,21 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+/* Animación para los puntitos de carga */
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.dot-animate {
+  animation: bounce 0.6s infinite alternate;
+}
+.dot-1 { animation-delay: 0s; }
+.dot-2 { animation-delay: 0.2s; }
+.dot-3 { animation-delay: 0.4s; }
+
+/* Estilos básicos para el Markdown dentro del chat */
+.markdown-body ul { list-style-type: disc; margin-left: 20px; }
+.markdown-body ol { list-style-type: decimal; margin-left: 20px; }
+.markdown-body p { margin-bottom: 8px; }
+.markdown-body strong { font-weight: 700; color: inherit; }
 }
