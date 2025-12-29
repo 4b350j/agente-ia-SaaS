@@ -86,7 +86,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 try:
     if GEMINI_API_KEY:
         genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
     else:
         logger.warning("⚠️ Faltan las claves de Gemini en las variables de entorno.")
 except Exception as e:
@@ -215,6 +215,7 @@ def chat(request: Request, req_body: ChatRequest):
     except Exception as e:
         logger.error(f"Error en chat Gemini: {e}")
         return {"response": "Lo siento, tuve un problema de conexión temporal. Inténtalo de nuevo."}
+
 
 
 
