@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { createClient } from '@supabase/supabase-js'
 import './App.css'
@@ -273,4 +273,5 @@ export default function App() {
     </div>
   )
 }
+
 
