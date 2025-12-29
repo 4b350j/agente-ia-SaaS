@@ -48,7 +48,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    "https://agente-ia-saas.onrender.com" # <--- ¡PON TU URL DE RENDER AQUÍ!
+    "agente-ia-saas.onrender.com" # <--- ¡PON TU URL DE RENDER AQUÍ!
 ]
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
 
@@ -215,6 +215,7 @@ def chat(request: Request, req_body: ChatRequest):
     except Exception as e:
         logger.error(f"Error en chat Gemini: {e}")
         return {"response": "Lo siento, tuve un problema de conexión temporal. Inténtalo de nuevo."}
+
 
 
 
