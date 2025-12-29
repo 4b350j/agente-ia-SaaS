@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
+import './index.css'
 
 // --- 1. IMPORTAR SENTRY ---
 import * as Sentry from "@sentry/react";
@@ -34,4 +35,5 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
   </React.StrictMode>,
 )
+
 
