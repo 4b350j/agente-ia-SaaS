@@ -61,7 +61,7 @@ ORIGINS = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
@@ -215,6 +215,7 @@ def chat(request: Request, req_body: ChatRequest):
     except Exception as e:
         logger.error(f"Error en chat Gemini: {e}")
         return {"response": "Lo siento, tuve un problema de conexión temporal. Inténtalo de nuevo."}
+
 
 
 
