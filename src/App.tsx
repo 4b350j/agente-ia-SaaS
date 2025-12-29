@@ -210,7 +210,7 @@ export default function App() {
     <div style={containerStyle}>
       <div style={cardStyle}>
         {showSidebar && (
-          <div style={{ width: isMobile ? '100%' : '350px', padding: '32px', borderRight: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ width: isMobile ? '100%' : '350px', padding: '32px', borderRight: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', overflowY: 'auto'}}>
             <div style={{marginBottom:'20px'}}>
                <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: colors.primary }}>Nexus AI 🧠</h2>
                <p style={{fontSize: '0.8rem', color: '#6b7280'}}>Usuario: {session.user.email}</p>
@@ -273,5 +273,6 @@ export default function App() {
     </div>
   )
 }
+
 
 
