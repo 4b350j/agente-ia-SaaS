@@ -1,30 +1,30 @@
-import React, { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { createClient } from '@supabase/supabase-js'
+import './App.css'
 
 // 👇👇👇 TUS DATOS REALES AQUÍ 👇👇👇
-const API_URL = "https://agente-ia-saas.onrender.com" 
+const API_URL = "https://agente-ia-saas.onrender.com"
 const SUPABASE_URL = "https://bvmwdavonhknysvfnybi.supabase.co"
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2bXdkYXZvbmhrbnlzdmZueWJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4OTYyNDQsImV4cCI6MjA4MjQ3MjI0NH0.DJwhA13v9JoU_Oa7f3XZafxlSYlwBNcJdBb35ujNmpA"
 // 👆👆👆 ------------------- 👆👆👆
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
-// --- FUNCIÓN DE "RESURRECCIÓN" (Reintentos automáticos) ---
-// Si el servidor está dormido, esto lo intenta 3 veces antes de rendirse.
+// --- FUNCIÓN DE "RESURRECCIÓN" ---
 async function fetchWithRetry(url: string, options: any, retries = 3, backoff = 1000) {
   try {
     const res = await fetch(url, options)
     if (!res.ok) {
-        // Si es error 503/504 (Server dormido/ocupado), lanzamos error para reintentar
         if (res.status === 503 || res.status === 504) throw new Error("Server sleeping")
-        return res // Si es otro error (ej: 404), lo devolvemos tal cual
+        return res
     }
     return res
   } catch (err) {
     if (retries > 0) {
       console.log(`Reintentando conexión... intentos restantes: ${retries}`)
       await new Promise(resolve => setTimeout(resolve, backoff))
-      return fetchWithRetry(url, options, retries - 1, backoff * 2) // Esperamos el doble cada vez
+      return fetchWithRetry(url, options, retries - 1, backoff * 2)
     }
     throw err
   }
@@ -54,23 +54,21 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
-      if (session) loadHistory(session.user.id)
+      // MEMORIA EFÍMERA: No cargamos historial al iniciar
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
-      if (session) { setMessages([]); loadHistory(session.user.id) }
+      if (!session) { 
+        setMessages([]); // Si sale, limpiamos todo
+      }
     })
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
     return () => { window.removeEventListener('resize', handleResize); subscription.unsubscribe() }
   }, [])
 
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages])
-
-  const renderTextWithBold = (text: string) => {
-    const parts = text.split(/(\*\*.*?\*\*)/g)
-    return parts.map((part, index) => part.startsWith('**') && part.endsWith('**') ? <b key={index}>{part.slice(2, -2)}</b> : part)
-  }
+  // Auto-scroll cada vez que cambian los mensajes o el estado de carga
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages, loading])
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -86,24 +84,13 @@ export default function App() {
     setChatStarted(false); setMessages([]); setPdfName(''); setPdfText('')
   }
 
-  const loadHistory = async (userId: string) => {
-    const { data } = await supabase.from('messages').select('*').eq('user_id', userId).order('created_at', { ascending: true })
-    if (data && data.length > 0) {
-      setMessages(data.map((msg: any) => ({ sender: msg.role, text: msg.content })))
-      setChatStarted(true)
-    }
-  }
-
-  const saveMessageToDB = async (role: 'user' | 'agent', content: string) => {
-    if (!session) return
-    await supabase.from('messages').insert([{ user_id: session.user.id, role, content }])
-  }
+  // MEMORIA EFÍMERA: Eliminamos saveMessageToDB y loadHistory
+  // Los mensajes solo viven en el estado "messages" de React.
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // 1. BLINDAJE FRONTEND: Tamaño
     if (file.size > 5 * 1024 * 1024) {
         alert("⚠️ El archivo es demasiado grande. Máximo 5MB.")
         return
@@ -114,7 +101,6 @@ export default function App() {
     formData.append('file', file)
 
     try {
-      // Usamos fetchWithRetry por si el servidor está dormido
       const res = await fetchWithRetry(`${API_URL}/api/upload`, { method: 'POST', body: formData })
       
       if (!res.ok) {
@@ -127,6 +113,9 @@ export default function App() {
       
       setPdfText(data.extracted_text)
       setPdfName(data.filename)
+      
+      // Mensaje del sistema confirmando subida (solo local)
+      setMessages(prev => [...prev, { sender: 'agent', text: `✅ **Documento recibido:** ${data.filename}\n\nHe analizado el contenido. ¿Qué quieres saber?` }])
       
     } catch (err: any) {
       alert('❌ Error: ' + err.message)
@@ -148,7 +137,6 @@ export default function App() {
       const data = await res.json()
       const welcome = data.welcome_msg
       setMessages([{ sender: 'agent', text: welcome }])
-      saveMessageToDB('agent', welcome)
       setChatStarted(true)
     } catch (err: any) { alert('No se pudo conectar con el servidor. Intenta de nuevo en unos segundos.') }
     setLoading(false)
@@ -158,10 +146,11 @@ export default function App() {
     e.preventDefault()
     if (!inputMsg.trim()) return
     const userMsg = inputMsg
+    
+    // Guardar en estado local (Memoria Efímera)
     setMessages(prev => [...prev, { sender: 'user', text: userMsg }])
     setInputMsg('')
     setLoading(true)
-    saveMessageToDB('user', userMsg)
 
     try {
       const res = await fetchWithRetry(`${API_URL}/api/chat`, {
@@ -171,21 +160,30 @@ export default function App() {
       })
       const data = await res.json()
       const reply = data.response
+      
+      // Guardar respuesta en estado local
       setMessages(prev => [...prev, { sender: 'agent', text: reply }])
-      saveMessageToDB('agent', reply)
     } catch (err) { 
-        // Fallback en UI si falla
         setMessages(prev => [...prev, { sender: 'agent', text: "⚠️ Error de conexión. Por favor reenvía tu mensaje." }])
     }
     setLoading(false)
   }
 
-  // --- ESTILOS IGUALES QUE ANTES ---
+  // --- ESTILOS ---
   const colors = { bg: '#f3f4f6', cardBg: '#ffffff', textMain: '#111827', primary: '#2563eb', border: '#e5e7eb', userBubble: '#2563eb', agentBubble: '#f3f4f6' }
   const containerStyle: React.CSSProperties = { minHeight: '100vh', background: colors.bg, color: colors.textMain, fontFamily: '"Inter", sans-serif', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }
   const cardStyle: React.CSSProperties = { width: isMobile ? '100%' : '1000px', height: isMobile ? '90vh' : '85vh', background: colors.cardBg, borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', overflow: 'hidden', display: 'flex', flexDirection: isMobile ? 'column' : 'row', border: `1px solid ${colors.border}` }
   const inputStyle: React.CSSProperties = { width: '100%', background: '#f9fafb', border: `1px solid ${colors.border}`, padding: '12px', borderRadius: '6px', outline: 'none' }
   const buttonStyle: React.CSSProperties = { padding: '12px', background: colors.primary, color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', width: '100%' }
+
+  // Componente visual para los puntitos de carga
+  const LoadingDots = () => (
+    <div style={{ display: 'flex', gap: '4px', padding: '10px 16px', background: colors.agentBubble, borderRadius: '12px', width: 'fit-content', alignSelf: 'flex-start' }}>
+       <div className="dot-animate dot-1" style={{ width: '8px', height: '8px', background: '#9ca3af', borderRadius: '50%' }}></div>
+       <div className="dot-animate dot-2" style={{ width: '8px', height: '8px', background: '#9ca3af', borderRadius: '50%' }}></div>
+       <div className="dot-animate dot-3" style={{ width: '8px', height: '8px', background: '#9ca3af', borderRadius: '50%' }}></div>
+    </div>
+  )
 
   if (!session) {
     return (
@@ -226,7 +224,7 @@ export default function App() {
                 <label style={{fontWeight:'600', fontSize:'0.85rem', color: '#1e40af', display: 'block', marginBottom: '8px'}}>📂 SUBIR PDF (Max 5MB)</label>
                 <input type="file" accept="application/pdf" onChange={handleFileUpload} style={{ fontSize: '0.8rem' }} disabled={uploading} />
                 {pdfName && <p style={{fontSize:'0.8rem', color:'#15803d', marginTop:'5px'}}>✅ {pdfName} listo</p>}
-                {uploading && <p style={{fontSize:'0.8rem', color:'#2563eb'}}>Analizando...</p>}
+                {uploading && <div style={{marginTop:'10px'}}><LoadingDots /></div>}
               </div>
 
               <div style={{marginTop:'auto', display:'flex', gap:'10px'}}>
@@ -243,13 +241,26 @@ export default function App() {
               <span style={{ fontWeight: '600' }}>{name || 'Asistente'}</span>
             </div>
             <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
               {messages.map((msg, idx) => (
                 <div key={idx} style={{ alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
-                  <div style={{ background: msg.sender === 'user' ? colors.userBubble : colors.agentBubble, color: msg.sender === 'user' ? 'white' : '#1f2937', padding: '12px 16px', borderRadius: '12px', lineHeight: '1.6' }}>
-                    {renderTextWithBold(msg.text)}
+                  <div className="markdown-body" style={{ background: msg.sender === 'user' ? colors.userBubble : colors.agentBubble, color: msg.sender === 'user' ? 'white' : '#1f2937', padding: '12px 16px', borderRadius: '12px', lineHeight: '1.6' }}>
+                    {/* 👇 AQUÍ ESTÁ LA MEJORA DE MARKDOWN 👇 */}
+                    <ReactMarkdown 
+                        components={{
+                            // Ajustamos el color de negritas según quien habla
+                            strong: ({node, ...props}) => <span style={{fontWeight: 'bold', color: msg.sender === 'user' ? '#fde047' : '#111827'}} {...props} />
+                        }}
+                    >
+                        {msg.text}
+                    </ReactMarkdown>
                   </div>
                 </div>
               ))}
+              
+              {/* 👇 AQUÍ ESTÁ LA MEJORA DE CARGA 👇 */}
+              {loading && !uploading && <LoadingDots />}
+              
               <div ref={chatEndRef} />
             </div>
             <form onSubmit={handleSend} style={{ padding: '24px', background: 'white', borderTop: `1px solid ${colors.border}`, display: 'flex', gap: '12px' }}>
