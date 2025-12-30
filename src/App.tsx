@@ -1,17 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react' // <--- AQUÍ ESTÁ EL ARREGLO (React)
+import React, { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { createClient } from '@supabase/supabase-js'
+import { jsPDF } from 'jspdf'
 import './App.css'
 
-// 👇👇👇 TUS DATOS REALES AQUÍ 👇👇👇
+// 👇👇👇 TUS DATOS REALES (NO LOS BORRES) 👇👇👇
 const API_URL = "https://agente-ia-saas.onrender.com"
 const SUPABASE_URL = "https://bvmwdavonhknysvfnybi.supabase.co"
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2bXdkYXZvbmhrbnlzdmZueWJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4OTYyNDQsImV4cCI6MjA4MjQ3MjI0NH0.DJwhA13v9JoU_Oa7f3XZafxlSYlwBNcJdBb35ujNmpA"
-// 👆👆👆 ------------------- 👆👆👆
+// 👆👆👆 ----------------------------------- 👆👆👆
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
-// --- 🧠 CEREBROS DISPONIBLES (ROLES) ---
+// --- ROLES DE IA ---
 const ROLES = [
   { 
     id: 'lawyer', 
@@ -36,7 +37,7 @@ const ROLES = [
   },
 ]
 
-// --- FUNCIÓN DE "RESURRECCIÓN" ---
+// --- FUNCIÓN DE RECONEXIÓN (SI EL SERVER ESTÁ DORMIDO) ---
 async function fetchWithRetry(url: string, options: any, retries = 3, backoff = 1000) {
   try {
     const res = await fetch(url, options)
@@ -79,30 +80,77 @@ export default function App() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  // --- SISTEMA DE CRÉDITOS 💎 ---
-  const [credits, setCredits] = useState(() => {
-    const savedDate = localStorage.getItem('nexus_date')
-    const savedCredits = localStorage.getItem('nexus_credits')
-    const today = new Date().toDateString()
-
-    if (savedDate !== today) {
-      localStorage.setItem('nexus_date', today)
-      localStorage.setItem('nexus_credits', '3')
-      return 3
-    }
-    return savedCredits ? parseInt(savedCredits) : 3
-  })
+  // --- CRÉDITOS EFÍMEROS (RAM - Se reinician al recargar) ---
+  const [credits, setCredits] = useState(3)
 
   const useCredit = () => {
     if (credits > 0) {
-      const newVal = credits - 1
-      setCredits(newVal)
-      localStorage.setItem('nexus_credits', newVal.toString())
+      setCredits(prev => prev - 1)
       return true
     }
     return false
   }
 
+  // --- FUNCIÓN: GENERAR Y DESCARGAR PDF ---
+  const downloadReport = () => {
+    const doc = new jsPDF()
+    const margin = 15
+    let y = 20
+
+    // Cabecera
+    doc.setFontSize(18)
+    doc.setTextColor(37, 99, 235) // Azul
+    doc.text(`Informe Nexus AI`, margin, y)
+    y += 10
+    
+    doc.setFontSize(10)
+    doc.setTextColor(100) // Gris
+    doc.text(`Archivo analizado: ${pdfName || 'Desconocido'}`, margin, y)
+    y += 6
+    doc.text(`Fecha: ${new Date().toLocaleString()}`, margin, y)
+    y += 10
+    
+    doc.setDrawColor(200)
+    doc.line(margin, y, 195, y) // Línea horizontal
+    y += 15
+
+    // Contenido
+    doc.setFontSize(11)
+    doc.setTextColor(0) // Negro
+
+    messages.forEach((msg) => {
+        const role = msg.sender === 'user' ? 'TÚ:' : `${name.toUpperCase() || 'AGENTE'}:`
+        
+        // 1. Quién habla (Negrita)
+        doc.setFont("helvetica", "bold")
+        doc.text(role, margin, y)
+        y += 6
+
+        // 2. Qué dice (Normal + Limpieza de Markdown)
+        doc.setFont("helvetica", "normal")
+        const cleanText = msg.text
+          .replace(/\*\*/g, '') // Quitar negritas md
+          .replace(/#/g, '')    // Quitar headers md
+          .replace(/`/g, '')    // Quitar código md
+        
+        // Dividir texto largo para que quepa en el ancho
+        const splitText = doc.splitTextToSize(cleanText, 180)
+        doc.text(splitText, margin, y)
+        
+        // Calcular espacio para el siguiente mensaje
+        y += (splitText.length * 6) + 10 
+
+        // Nueva página si se acaba el folio
+        if (y > 270) {
+            doc.addPage()
+            y = 20
+        }
+    })
+
+    doc.save('Informe_Nexus.pdf')
+  }
+
+  // --- EFECTOS (INICIO Y SESIÓN) ---
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
@@ -118,6 +166,7 @@ export default function App() {
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages, loading])
 
+  // --- HANDLERS (AUTH, UPLOAD, CHAT) ---
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -136,9 +185,9 @@ export default function App() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // 🛑 BLOQUEO DE CRÉDITOS 🛑
+    // 🔒 LÓGICA DE CRÉDITOS Y PRIVACIDAD
     if (credits <= 0) {
-        alert("⛔ ¡Te has quedado sin créditos hoy!\nVuelve mañana para tener 3 análisis gratis más.")
+        alert("🔒 Límite de sesión segura alcanzado.\n\nPor seguridad, Nexus AI no mantiene sesiones largas. \n\nPor favor, recarga la página (F5) para limpiar la memoria y empezar una sesión nueva.")
         e.target.value = ''
         return
     }
@@ -154,7 +203,6 @@ export default function App() {
 
     try {
       const res = await fetchWithRetry(`${API_URL}/api/upload`, { method: 'POST', body: formData })
-      
       if (!res.ok) {
           const errData = await res.json()
           throw new Error(errData.detail || "Error al procesar PDF")
@@ -166,10 +214,9 @@ export default function App() {
       setPdfText(data.extracted_text)
       setPdfName(data.filename)
       
-      // 💸 COBRAR CRÉDITO
-      useCredit()
+      useCredit() // Restar crédito
 
-      setMessages(prev => [...prev, { sender: 'agent', text: `✅ **Documento recibido:** ${data.filename}\n\n💎 He gastado 1 crédito. Te quedan **${credits - 1}**.\n\nHe analizado el contenido. ¿Qué quieres saber?` }])
+      setMessages(prev => [...prev, { sender: 'agent', text: `✅ **Documento recibido:** ${data.filename}\n\n💎 Crédito utilizado. Te quedan **${credits - 1}** en esta sesión segura.\n\nHe analizado el contenido. ¿Qué quieres saber?` }])
       
     } catch (err: any) {
       alert('❌ Error: ' + err.message)
@@ -189,10 +236,9 @@ export default function App() {
         body: JSON.stringify({ name, persona })
       })
       const data = await res.json()
-      const welcome = data.welcome_msg
-      setMessages([{ sender: 'agent', text: welcome }])
+      setMessages([{ sender: 'agent', text: data.welcome_msg }])
       setChatStarted(true)
-    } catch (err: any) { alert('No se pudo conectar con el servidor. Intenta de nuevo en unos segundos.') }
+    } catch (err: any) { alert('No se pudo conectar con el servidor.') }
     setLoading(false)
   }
 
@@ -212,15 +258,14 @@ export default function App() {
         body: JSON.stringify({ name, persona, history: messages, message: userMsg, context: pdfText })
       })
       const data = await res.json()
-      const reply = data.response
-      setMessages(prev => [...prev, { sender: 'agent', text: reply }])
+      setMessages(prev => [...prev, { sender: 'agent', text: data.response }])
     } catch (err) { 
-        setMessages(prev => [...prev, { sender: 'agent', text: "⚠️ Error de conexión. Por favor reenvía tu mensaje." }])
+        setMessages(prev => [...prev, { sender: 'agent', text: "⚠️ Error de conexión." }])
     }
     setLoading(false)
   }
 
-  // --- ESTILOS ---
+  // --- COMPONENTES VISUALES ---
   const colors = { bg: '#f3f4f6', cardBg: '#ffffff', textMain: '#111827', primary: '#2563eb', border: '#e5e7eb', userBubble: '#2563eb', agentBubble: '#f3f4f6' }
   const containerStyle: React.CSSProperties = { minHeight: '100vh', background: colors.bg, color: colors.textMain, fontFamily: '"Inter", sans-serif', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }
   const cardStyle: React.CSSProperties = { width: isMobile ? '100%' : '1000px', height: isMobile ? '90vh' : '85vh', background: colors.cardBg, borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', overflow: 'hidden', display: 'flex', flexDirection: isMobile ? 'column' : 'row', border: `1px solid ${colors.border}` }
@@ -235,6 +280,7 @@ export default function App() {
     </div>
   )
 
+  // --- RENDERIZADO ---
   if (!session) {
     return (
       <div style={containerStyle}>
@@ -272,8 +318,6 @@ export default function App() {
             </div>
             
             <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
-              
-              {/* SELECCIÓN DE ROL */}
               <div>
                 <label style={{fontWeight:'600', fontSize:'0.85rem', marginBottom: '10px', display: 'block'}}>ELIGE TU EXPERTO</label>
                 <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
@@ -298,16 +342,13 @@ export default function App() {
                   ))}
                 </div>
               </div>
-
               <div><label style={{fontWeight:'600', fontSize:'0.85rem'}}>INSTRUCCIÓN (Editable)</label><textarea style={{...inputStyle, height: '60px', fontSize: '0.8rem'}} value={persona} onChange={e => setPersona(e.target.value)} placeholder="Selecciona un rol arriba..." /></div>
-              
               <div style={{ padding: '15px', background: '#eff6ff', borderRadius: '8px', border: '1px dashed #2563eb' }}>
                 <label style={{fontWeight:'600', fontSize:'0.85rem', color: '#1e40af', display: 'block', marginBottom: '8px'}}>📂 SUBIR PDF (Max 5MB)</label>
                 <input type="file" accept="application/pdf" onChange={handleFileUpload} style={{ fontSize: '0.8rem' }} disabled={uploading} />
                 {pdfName && <p style={{fontSize:'0.8rem', color:'#15803d', marginTop:'5px'}}>✅ {pdfName} listo</p>}
                 {uploading && <div style={{marginTop:'10px'}}><LoadingDots /></div>}
               </div>
-
               <div style={{marginTop:'auto', paddingTop: '20px', display:'flex', gap:'10px'}}>
                 <button disabled={loading} style={buttonStyle}>{loading ? '...' : 'Iniciar Chat'}</button>
                 <button type="button" onClick={handleLogout} style={{...buttonStyle, background: '#ef4444', width: '80px'}}>Salir</button>
@@ -319,25 +360,28 @@ export default function App() {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#f9fafb' }}>
             <div style={{ padding: '16px 24px', background: 'white', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', gap: '16px' }}>
               {isMobile && <button onClick={() => setChatStarted(false)}>⬅</button>}
-              <span style={{ fontWeight: '600' }}>{name || 'Asistente'}</span>
-              <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#9ca3af' }}>💎 {credits} restantes</span>
+              <div style={{display:'flex', flexDirection:'column'}}>
+                  <span style={{ fontWeight: '600' }}>{name || 'Asistente'}</span>
+                  {/* BOTÓN DESCARGA PDF */}
+                  <span 
+                    style={{ fontSize: '0.75rem', color: '#2563eb', cursor:'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }} 
+                    onClick={downloadReport}
+                  >
+                    📥 Descargar Informe
+                  </span>
+              </div>
+              <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#9ca3af' }}>💎 {credits}</span>
             </div>
             <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              
               {messages.map((msg, idx) => (
                 <div key={idx} style={{ alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
                   <div className="markdown-body" style={{ background: msg.sender === 'user' ? colors.userBubble : colors.agentBubble, color: msg.sender === 'user' ? 'white' : '#1f2937', padding: '12px 16px', borderRadius: '12px', lineHeight: '1.6' }}>
-                    <ReactMarkdown 
-                        components={{
-                            strong: ({node, ...props}) => <span style={{fontWeight: 'bold', color: msg.sender === 'user' ? '#fde047' : '#111827'}} {...props} />
-                        }}
-                    >
+                    <ReactMarkdown components={{ strong: ({node, ...props}) => <span style={{fontWeight: 'bold', color: msg.sender === 'user' ? '#fde047' : '#111827'}} {...props} /> }}>
                         {msg.text}
                     </ReactMarkdown>
                   </div>
                 </div>
               ))}
-              
               {loading && !uploading && <LoadingDots />}
               <div ref={chatEndRef} />
             </div>
@@ -351,6 +395,5 @@ export default function App() {
     </div>
   )
 }
-
 
 
