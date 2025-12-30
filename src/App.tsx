@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { createClient } from '@supabase/supabase-js'
 import { jsPDF } from 'jspdf'
-import './App.css'
+import './App.css' // <--- IMPORTANTE: CONECTA EL DISEÑO
 
-// 👇👇👇 VOLVEMOS A LAS CLAVES DIRECTAS (PARA DESCARTAR ERRORES DE VERCEL) 👇👇👇
+// 👇👇👇 TUS CLAVES (SI FALLA VERCEL, DEJA ESTAS DIRECTAS POR AHORA) 👇👇👇
 const API_URL = "https://agente-ia-saas.onrender.com"
 const SUPABASE_URL = "https://bvmwdavonhknysvfnybi.supabase.co"
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2bXdkYXZvbmhrbnlzdmZueWJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4OTYyNDQsImV4cCI6MjA4MjQ3MjI0NH0.DJwhA13v9JoU_Oa7f3XZafxlSYlwBNcJdBb35ujNmpA"
@@ -15,23 +15,23 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 // --- CONFIGURACIÓN DE ROLES ---
 const ROLES = [
   { 
-    id: 'lawyer_general', name: 'Abogado General', icon: '⚖️', desc: 'Riesgos legales.',
+    id: 'lawyer_general', name: 'Abogado General', icon: '⚖️', desc: 'Detecto riesgos legales y cláusulas abusivas.',
     prompt: `Actúa como un abogado senior experto en derecho contractual. Analiza el documento buscando riesgos legales, ambigüedades y cláusulas abusivas.` 
   },
   { 
-    id: 'lawyer_labor', name: 'Laboralista', icon: '👷', desc: 'Laboral y despidos.',
+    id: 'lawyer_labor', name: 'Laboralista', icon: '👷', desc: 'Reviso contratos laborales y despidos.',
     prompt: `Actúa como un abogado laboralista experto. Analiza violaciones de derechos laborales, finiquitos y cláusulas abusivas.` 
   },
   { 
-    id: 'auditor', name: 'Auditor Financiero', icon: '💰', desc: 'Errores numéricos.',
+    id: 'auditor', name: 'Auditor Financiero', icon: '💰', desc: 'Busco errores numéricos y fugas.',
     prompt: `Actúa como un auditor financiero (Big 4). Busca incoherencias numéricas, gastos duplicados y riesgos.` 
   },
   { 
-    id: 'summarizer', name: 'Resumidor', icon: '📝', desc: 'Resumen rápido.',
+    id: 'summarizer', name: 'Resumidor', icon: '📝', desc: 'Resumo lo esencial en segundos.',
     prompt: `Sintetiza la información clave, fechas e importes en una lista con viñetas. Ignora la paja.` 
   },
   {
-    id: 'translator', name: 'Traductor Jurídico', icon: '🌍', desc: 'Traducción legal.',
+    id: 'translator', name: 'Traductor Jurídico', icon: '🌍', desc: 'Traduzco jerga legal a español simple.',
     prompt: `Actúa como traductor jurado. Traduce o explica la jerga legal compleja en lenguaje sencillo.`
   }
 ]
@@ -72,7 +72,7 @@ export default function App() {
   const [pdfName, setPdfName] = useState('')
   const [uploading, setUploading] = useState(false)
 
-  // ESTADO ÚNICO DE MÓVIL (Sin duplicados)
+  // ESTADO ÚNICO DE MÓVIL
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   
   const chatEndRef = useRef<HTMLDivElement>(null)
@@ -109,20 +109,16 @@ export default function App() {
 
   // --- EFECTOS ---
   useEffect(() => {
-    // Escuchar sesión
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session))
-    
-    // Escuchar tamaño de pantalla
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
-    
     return () => { window.removeEventListener('resize', handleResize); subscription.unsubscribe() }
   }, [])
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages, loading])
 
-  // --- LÓGICA DE PANTALLAS (Menú vs Chat) ---
+  // --- LÓGICA DE PANTALLAS ---
   const showSidebar = !isMobile || (isMobile && !chatStarted)
   const showChat = !isMobile || (isMobile && chatStarted)
 
@@ -140,7 +136,7 @@ export default function App() {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return
-    if (credits <= 0) { alert(`🔒 Límite de sesión alcanzado. Recarga (F5) para limpiar y seguir.`); e.target.value = ''; return }
+    if (credits <= 0) { alert(`🔒 Límite de sesión alcanzado. Recarga (F5) para limpiar.`); e.target.value = ''; return }
     
     setUploading(true)
     const formData = new FormData(); formData.append('file', file)
@@ -150,28 +146,23 @@ export default function App() {
       const data = await res.json()
       
       setPdfText(data.extracted_text); setPdfName(data.filename); useCredit()
-      setMessages(prev => [...prev, { sender: 'agent', text: `✅ Leído: ${data.filename}. Te quedan ${credits-1} créditos. ¿Qué analizamos?` }])
+      setMessages(prev => [...prev, { sender: 'agent', text: `✅ Leído: ${data.filename}. Te quedan ${credits-1} créditos.` }])
     } catch (err: any) { alert('Error: ' + err.message) }
     setUploading(false)
   }
 
+  // ⭐ NUEVA VERSIÓN: BIENVENIDA INSTANTÁNEA (UX MEJORADA)
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault()
-    
-    // 1. Buscamos la descripción corta del rol para que el saludo tenga contexto
+    // No llamamos al servidor. Creamos el mensaje localmente.
     const roleDesc = ROLES.find(r => r.name === name)?.desc || 'Estoy listo para ayudarte.'
-
-    // 2. Creamos el mensaje LOCALMENTE (Instantáneo, sin esperas)
-    const welcomeMessage = { 
+    
+    setMessages([{ 
         sender: 'agent', 
         text: `👋 Hola, soy tu **${name}**.\n\n${roleDesc}\n\n¿Qué duda tienes sobre el documento?` 
-    }
-
-    // 3. Lo ponemos en el chat y entramos
-    setMessages([welcomeMessage])
+    }])
     setChatStarted(true)
   }
-
   
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault(); if (!inputMsg.trim()) return
@@ -184,18 +175,16 @@ export default function App() {
       })
       const data = await res.json()
       setMessages(prev => [...prev, { sender: 'agent', text: data.response }])
-    } catch (err) { setMessages(prev => [...prev, { sender: 'agent', text: "⚠️ Error de conexión. Inténtalo de nuevo." }]) }
+    } catch (err) { setMessages(prev => [...prev, { sender: 'agent', text: "⚠️ Error de conexión." }]) }
     setLoading(false)
   }
 
   // --- RENDERIZADO ---
   
-  // Estilos
   const containerStyle: React.CSSProperties = { height: '100dvh', width: '100vw', background: '#f3f4f6', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: isMobile ? 0 : '20px', overflow: 'hidden' }
   const cardStyle: React.CSSProperties = { width: isMobile ? '100%' : '1000px', height: isMobile ? '100%' : '85vh', background: 'white', borderRadius: isMobile ? 0 : '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', display: 'flex', flexDirection: isMobile ? 'column' : 'row', overflow: 'hidden' }
   const btnStyle: React.CSSProperties = { padding: '14px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', width: '100%', fontSize: '1rem', cursor: 'pointer', fontWeight: '600' }
 
-  // Pantalla de Login
   if (!session) return (
     <div style={containerStyle}>
       <div style={{...cardStyle, width:'400px', height:'auto', flexDirection:'column', padding:'40px', borderRadius:'12px', border:'1px solid #e5e7eb'}}>
@@ -212,14 +201,13 @@ export default function App() {
     </div>
   )
 
-  // App Principal
   return (
     <div style={containerStyle}>
       <div style={cardStyle}>
         
         {/* SIDEBAR (MENÚ) */}
         {showSidebar && (
-          <div style={{ width: isMobile ? '100%' : '350px', padding: '24px', borderRight: '1px solid #e5e7eb', background: '#f8fafc', overflowY: 'auto' }}>
+          <div style={{ width: isMobile ? '100%' : '350px', padding: '16px', borderRight: '1px solid #e5e7eb', background: '#f8fafc', overflowY: 'auto' }}>
             <div style={{marginBottom:'20px', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
               <h2 style={{color:'#2563eb', fontSize:'1.4rem', fontWeight:'bold'}}>Nexus AI 🛡️</h2>
               <span style={{background: credits>0?'#dcfce7':'#fee2e2', color: credits>0?'#16a34a':'#dc2626', padding:'4px 10px', borderRadius:'20px', fontSize:'0.8rem', fontWeight:'bold'}}>
@@ -259,7 +247,6 @@ export default function App() {
         {/* CHAT */}
         {showChat && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', background:'white' }}>
-            {/* Header Chat */}
             <div style={{padding:'16px', borderBottom:'1px solid #e5e7eb', display:'flex', alignItems:'center', gap:'10px', background:'white', boxShadow:'0 2px 4px rgba(0,0,0,0.05)', zIndex:10}}>
               {isMobile && <button onClick={()=>setChatStarted(false)} style={{background:'none', border:'none', fontSize:'1.5rem', cursor:'pointer'}}>⬅</button>}
               <div>
@@ -268,7 +255,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Mensajes */}
             <div style={{flex:1, padding:'20px', overflowY:'auto', background:'#f9fafb', display:'flex', flexDirection:'column', gap:'15px'}}>
               {messages.map((m,i)=>(
                 <div key={i} style={{alignSelf: m.sender==='user'?'flex-end':'flex-start', maxWidth:'85%'}}>
@@ -290,7 +276,6 @@ export default function App() {
               {loading && !uploading && <div style={{padding:'10px', color:'#6b7280', fontSize:'0.9rem'}}>Escribiendo...</div>}
             </div>
 
-            {/* Input */}
             <form onSubmit={handleSend} style={{padding:'15px', borderTop:'1px solid #e5e7eb', display:'flex', gap:'10px', background:'white'}}>
               <input 
                 value={inputMsg} 
