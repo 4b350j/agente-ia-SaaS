@@ -12,28 +12,61 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
-// --- ROLES DE IA ---
+// --- 🧠 CEREBROS DISPONIBLES (ROLES AMPLIADOS) ---
 const ROLES = [
+  // --- ÁREA LEGAL ---
   { 
-    id: 'lawyer', 
-    name: 'Abogado Experto', 
+    id: 'lawyer_general', 
+    name: 'Abogado General', 
     icon: '⚖️', 
     desc: 'Detecta riesgos legales y cláusulas abusivas.',
     prompt: 'Actúa como un abogado senior experto en derecho contractual. Analiza el documento buscando riesgos legales, ambigüedades y cláusulas abusivas. Cita textualmente las partes relevantes y sugiere cambios para proteger al usuario.' 
   },
   { 
-    id: 'financial', 
-    name: 'Auditor Fiscal', 
-    icon: '💰', 
-    desc: 'Busca deducciones y errores numéricos.',
-    prompt: 'Actúa como un auditor financiero meticuloso. Analiza el documento buscando incoherencias numéricas, oportunidades de ahorro fiscal y detalles económicos importantes. Usa tablas Markdown para presentar los datos.' 
+    id: 'lawyer_labor', 
+    name: 'Laboralista', 
+    icon: '👷', 
+    desc: 'Revisa contratos de trabajo y despidos.',
+    prompt: 'Actúa como un abogado laboralista experto en defensa del trabajador. Analiza el documento buscando violaciones de los derechos laborales, cálculo incorrecto de finiquitos, cláusulas de no competencia abusivas o condiciones ilegales según el Estatuto de los Trabajadores.' 
   },
   { 
+    id: 'lawyer_gdpr', 
+    name: 'Experto en Datos (RGPD)', 
+    icon: '🔐', 
+    desc: 'Auditoría de Privacidad y Cookies.',
+    prompt: 'Actúa como un consultor experto en Protección de Datos (RGPD/GDPR). Analiza este documento legal o política de privacidad y señala si cumple con la normativa europea de protección de datos, si el consentimiento es explícito y si falta información obligatoria.' 
+  },
+
+  // --- ÁREA FINANCIERA ---
+  { 
+    id: 'auditor', 
+    name: 'Auditor Financiero', 
+    icon: '💰', 
+    desc: 'Busca incoherencias y fugas de dinero.',
+    prompt: 'Actúa como un auditor financiero meticuloso (Big 4). Analiza el documento buscando incoherencias numéricas, gastos duplicados, falta de justificación en partidas presupuestarias y riesgos financieros operativos.' 
+  },
+  { 
+    id: 'tax_advisor', 
+    name: 'Asesor Fiscal', 
+    icon: '📉', 
+    desc: 'Optimización de impuestos y deducciones.',
+    prompt: 'Actúa como un Asesor Fiscal experto. Analiza esta factura o balance y busca oportunidades de deducción fiscal, gastos no deducibles que podrían causar problemas con Hacienda, y errores en el cálculo del IVA o retenciones.' 
+  },
+
+  // --- UTILIDADES ---
+  { 
     id: 'summarizer', 
-    name: 'Resumidor', 
+    name: 'Resumidor Ejecutivo', 
     icon: '📝', 
     desc: 'Lo esencial en menos de 2 minutos.',
-    prompt: 'Actúa como un asistente ejecutivo altamente eficiente. Tu objetivo es sintetizar la información para que se pueda leer rápidamente. Ignora la paja y destaca solo los puntos clave, fechas y obligaciones en una lista con viñetas.' 
+    prompt: 'Actúa como un asistente ejecutivo altamente eficiente. Tu objetivo es sintetizar la información para que se pueda leer rápidamente. Ignora la paja y destaca solo los puntos clave, fechas límite, importes económicos y obligaciones en una lista con viñetas.' 
+  },
+  { 
+    id: 'translator', 
+    name: 'Traductor Jurídico', 
+    icon: '🌍', 
+    desc: 'Traduce y explica términos complejos.',
+    prompt: 'Actúa como un traductor jurado experto. Si el documento está en otro idioma, tradúcelo al español manteniendo la terminología legal precisa. Si ya está en español, "traduce" la jerga legal incomprensible a un lenguaje llano que cualquier persona pueda entender.' 
   },
 ]
 
@@ -395,5 +428,6 @@ export default function App() {
     </div>
   )
 }
+
 
 
