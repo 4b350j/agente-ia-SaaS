@@ -3,6 +3,31 @@ import ReactMarkdown from 'react-markdown'
 import { createClient } from '@supabase/supabase-js'
 import './App.css'
 
+// --- 🧠 CEREBROS DISPONIBLES (ROLES) ---
+const ROLES = [
+  { 
+    id: 'lawyer', 
+    name: 'Abogado Experto', 
+    icon: '⚖️', 
+    desc: 'Detecta riesgos legales y cláusulas abusivas.',
+    prompt: 'Actúa como un abogado senior experto en derecho contractual. Analiza el documento buscando riesgos legales, ambigüedades y cláusulas abusivas. Cita textualmente las partes relevantes y sugiere cambios para proteger al usuario.' 
+  },
+  { 
+    id: 'financial', 
+    name: 'Auditor Fiscal', 
+    icon: '💰', 
+    desc: 'Busca deducciones y errores numéricos.',
+    prompt: 'Actúa como un auditor financiero meticuloso. Analiza el documento buscando incoherencias numéricas, oportunidades de ahorro fiscal y detalles económicos importantes. Usa tablas Markdown para presentar los datos.' 
+  },
+  { 
+    id: 'summarizer', 
+    name: 'Resumidor', 
+    icon: '📝', 
+    desc: 'Lo esencial en menos de 2 minutos.',
+    prompt: 'Actúa como un asistente ejecutivo altamente eficiente. Tu objetivo es sintetizar la información para que se pueda leer rápidamente. Ignora la paja y destaca solo los puntos clave, fechas y obligaciones en una lista con viñetas.' 
+  },
+]
+
 // 👇👇👇 TUS DATOS REALES AQUÍ 👇👇👇
 const API_URL = "https://agente-ia-saas.onrender.com"
 const SUPABASE_URL = "https://bvmwdavonhknysvfnybi.supabase.co"
@@ -215,23 +240,81 @@ export default function App() {
                <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: colors.primary }}>Nexus AI 🧠</h2>
                <p style={{fontSize: '0.8rem', color: '#6b7280'}}>Usuario: {session.user.email}</p>
             </div>
-            
-            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
-              <div><label style={{fontWeight:'600', fontSize:'0.85rem'}}>NOMBRE</label><input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Consultor" /></div>
-              <div><label style={{fontWeight:'600', fontSize:'0.85rem'}}>INSTRUCCIÓN</label><textarea style={{...inputStyle, height: '100px'}} value={persona} onChange={e => setPersona(e.target.value)} placeholder="Ej: Eres un experto..." /></div>
-              
-              <div style={{ padding: '15px', background: '#eff6ff', borderRadius: '8px', border: '1px dashed #2563eb' }}>
-                <label style={{fontWeight:'600', fontSize:'0.85rem', color: '#1e40af', display: 'block', marginBottom: '8px'}}>📂 SUBIR PDF (Max 5MB)</label>
-                <input type="file" accept="application/pdf" onChange={handleFileUpload} style={{ fontSize: '0.8rem' }} disabled={uploading} />
-                {pdfName && <p style={{fontSize:'0.8rem', color:'#15803d', marginTop:'5px'}}>✅ {pdfName} listo</p>}
-                {uploading && <div style={{marginTop:'10px'}}><LoadingDots /></div>}
-              </div>
+            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1, overflowY: 'auto' }}>
+  
+  {/* 1. SELECCIÓN DE EXPERTO (NUEVO) */}
+  <div>
+    <label style={{fontWeight:'600', fontSize:'0.85rem', marginBottom: '10px', display: 'block'}}>ELIGE TU EXPERTO</label>
+    <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+      {ROLES.map(role => (
+        <div 
+          key={role.id}
+          onClick={() => {
+            setPersona(role.prompt)
+            setName(role.name) // Auto-rellena el nombre también
+          }}
+          style={{
+            padding: '10px',
+            border: persona === role.prompt ? `2px solid ${colors.primary}` : `1px solid ${colors.border}`,
+            borderRadius: '8px',
+            background: persona === role.prompt ? '#eff6ff' : 'white',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+        >
+          <div style={{display:'flex', alignItems:'center', gap:'8px', fontWeight:'600', fontSize:'0.9rem'}}>
+            <span>{role.icon}</span> {role.name}
+          </div>
+          <p style={{fontSize:'0.75rem', color:'#6b7280', margin:'4px 0 0 24px'}}>{role.desc}</p>
+        </div>
+      ))}
+    </div>
+  </div>
 
-              <div style={{marginTop:'auto', display:'flex', gap:'10px'}}>
-                <button disabled={loading} style={buttonStyle}>{loading ? '...' : 'Iniciar Chat'}</button>
-                <button type="button" onClick={handleLogout} style={{...buttonStyle, background: '#ef4444', width: '80px'}}>Salir</button>
-              </div>
-            </form>
+  {/* 2. INPUT DE NOMBRE (Opcional, se auto-rellena) */}
+  <div>
+    <label style={{fontWeight:'600', fontSize:'0.85rem'}}>NOMBRE DEL AGENTE</label>
+    <input 
+      style={inputStyle} 
+      value={name} 
+      onChange={e => setName(e.target.value)} 
+      placeholder="Ej: Mi Asistente" 
+    />
+  </div>
+
+  {/* 3. INSTRUCCIÓN (Ahora es visible para editar si quieren, pero ya rellena) */}
+  <div>
+    <label style={{fontWeight:'600', fontSize:'0.85rem'}}>INSTRUCCIÓN (Editable)</label>
+    <textarea 
+      style={{...inputStyle, height: '80px', fontSize: '0.8rem'}} 
+      value={persona} 
+      onChange={e => setPersona(e.target.value)} 
+      placeholder="Selecciona un experto arriba o escribe tu propia instrucción..." 
+    />
+  </div>
+  
+  {/* 4. SUBIDA DE ARCHIVO (IGUAL QUE ANTES) */}
+  <div style={{ padding: '15px', background: '#eff6ff', borderRadius: '8px', border: '1px dashed #2563eb' }}>
+    <label style={{fontWeight:'600', fontSize:'0.85rem', color: '#1e40af', display: 'block', marginBottom: '8px'}}>📂 SUBIR PDF (Max 5MB)</label>
+    <input type="file" accept="application/pdf" onChange={handleFileUpload} style={{ fontSize: '0.8rem' }} disabled={uploading} />
+    {pdfName && <p style={{fontSize:'0.8rem', color:'#15803d', marginTop:'5px'}}>✅ {pdfName} listo</p>}
+    {uploading && <div style={{marginTop:'10px'}}><LoadingDots /></div>}
+  </div>
+
+  {/* 5. BOTONES DE ACCIÓN (RECUPERADOS) */}
+  <div style={{marginTop:'auto', paddingTop: '20px', display:'flex', gap:'10px'}}>
+    <button disabled={loading} style={buttonStyle}>
+      {loading ? 'Configurando...' : 'Iniciar Chat'}
+    </button>
+    <button 
+      type="button" 
+      onClick={handleLogout} 
+      style={{...buttonStyle, background: '#ef4444', width: '80px'}}
+    >
+      Salir
+    </button>
+  </div>
+</form>
           </div>
         )}
         {showChat && (
@@ -273,6 +356,7 @@ export default function App() {
     </div>
   )
 }
+
 
 
 
