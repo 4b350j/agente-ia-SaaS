@@ -155,7 +155,23 @@ export default function App() {
     setUploading(false)
   }
 
-  const handleCreate = async (e: React.FormEvent) => { e.preventDefault(); setChatStarted(true) }
+  const handleCreate = (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    // 1. Buscamos la descripción corta del rol para que el saludo tenga contexto
+    const roleDesc = ROLES.find(r => r.name === name)?.desc || 'Estoy listo para ayudarte.'
+
+    // 2. Creamos el mensaje LOCALMENTE (Instantáneo, sin esperas)
+    const welcomeMessage = { 
+        sender: 'agent', 
+        text: `👋 Hola, soy tu **${name}**.\n\n${roleDesc}\n\n¿Qué duda tienes sobre el documento?` 
+    }
+
+    // 3. Lo ponemos en el chat y entramos
+    setMessages([welcomeMessage])
+    setChatStarted(true)
+  }
+
   
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault(); if (!inputMsg.trim()) return
@@ -290,6 +306,7 @@ export default function App() {
     </div>
   )
 }
+
 
 
 
