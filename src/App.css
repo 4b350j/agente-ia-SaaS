@@ -32,3 +32,23 @@
   font-weight: 700; 
   color: inherit; /* Hereda el color (amarillo o negro según quien hable) */
 }
+/* --- PARCHE UNIVERSAL PARA MÓVILES Y NAVEGADORES --- */
+html, body {
+  overscroll-behavior-y: none; /* Evita el rebote elástico en Mac/iOS */
+  -webkit-overflow-scrolling: touch; /* Scroll suave */
+}
+
+/* Quitar destello azul al tocar en Android */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* Scrollbars bonitas en Firefox y PC */
+* { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+*::-webkit-scrollbar { width: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+
+/* Fallback para navegadores viejos */
+@supports not (height: 100dvh) {
+  .app-container-fallback { height: 100vh; }
+}
+
