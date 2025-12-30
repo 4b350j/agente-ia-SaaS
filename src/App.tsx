@@ -314,8 +314,18 @@ Por favor, recarga la página (F5) para limpiar la memoria y comenzar de nuevo.`
     )
   }
 
-  const showSidebar = !isMobile || (isMobile && !chatStarted)
-  const showChat = !isMobile || (isMobile && chatStarted)
+// 1. Detectamos si es móvil por el ancho de pantalla (< 768px)
+const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+
+// 2. Lógica del Menú (Sidebar):
+// - Si NO es móvil (escritorio) -> Muéstralo siempre.
+// - Si ES móvil -> Muéstralo solo si NO hemos empezado a chatear.
+const showSidebar = !isMobile || (isMobile && !chatStarted)
+
+// 3. Lógica del Chat:
+// - Si NO es móvil (escritorio) -> Muéstralo siempre (al lado del menú).
+// - Si ES móvil -> Muéstralo solo si YA hemos empezado a chatear.
+const showChat = !isMobile || (isMobile && chatStarted)
 
   return (
     <div style={containerStyle}>
@@ -417,5 +427,6 @@ Por favor, recarga la página (F5) para limpiar la memoria y comenzar de nuevo.`
     </div>
   )
 }
+
 
 
