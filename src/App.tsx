@@ -4,11 +4,11 @@ import { createClient } from '@supabase/supabase-js'
 import { jsPDF } from 'jspdf'
 import './App.css' // <--- IMPORTANTE: CONECTA EL DISEÑO
 
-// 👇👇👇 TUS CLAVES (SI FALLA VERCEL, DEJA ESTAS DIRECTAS POR AHORA) 👇👇👇
-const API_URL = "https://agente-ia-saas.onrender.com"
-const SUPABASE_URL = "https://bvmwdavonhknysvfnybi.supabase.co"
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2bXdkYXZvbmhrbnlzdmZueWJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4OTYyNDQsImV4cCI6MjA4MjQ3MjI0NH0.DJwhA13v9JoU_Oa7f3XZafxlSYlwBNcJdBb35ujNmpA"
-// 👆👆👆 ------------------------------------------------------------- 👆👆👆
+// MODO SEGURO (PRODUCCIÓN)
+const API_URL = import.meta.env.VITE_API_URL
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY
+
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
@@ -291,6 +291,7 @@ export default function App() {
     </div>
   )
 }
+
 
 
 
