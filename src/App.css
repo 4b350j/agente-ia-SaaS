@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* LA REGLA DE ORO DEL DISEÑO WEB (Esto arregla el corte lateral)  */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+
 /* Animación para los puntitos de carga (...) */
 @keyframes bounce {
   0%, 100% { transform: translateY(0); }
@@ -51,4 +57,5 @@ html, body {
 @supports not (height: 100dvh) {
   .app-container-fallback { height: 100vh; }
 }
+
 
