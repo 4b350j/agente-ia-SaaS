@@ -110,7 +110,7 @@ html, body {
   overscroll-behavior-y: none;
 }
 
-/* 👇 MEJORA PRO: Indicador de escritura (Burbujas) */
+/*Indicador de escritura (Burbujas) */
 .typing-indicator {
   display: flex;
   align-items: center;
@@ -150,6 +150,72 @@ html, body {
   border-color: #2563eb;
   color: #2563eb;
   transform: translateY(-1px);
+}
+/* ---ANATOMÍA DEL CHAT --- */
+
+/* Animación de entrada suave */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.message-row {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 25px; /* Más aire entre mensajes */
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+.message-row.user {
+  flex-direction: row-reverse; /* Usuario a la derecha */
+}
+
+/* Avatares */
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* Burbujas */
+.bubble {
+  padding: 14px 20px;
+  border-radius: 12px;
+  max-width: 85%;
+  line-height: 1.6;
+  position: relative;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.bubble.agent {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-top-left-radius: 2px; /* Efecto "pico" de bocadillo */
+  color: #334155;
+  /* TIPOGRAFÍA LEGAL: Fuente Serif para respuestas del abogado */
+  font-family: 'Georgia', 'Merriweather', serif; 
+  font-size: 0.95rem;
+}
+
+.bubble.user {
+  background: #2563eb;
+  color: white;
+  border-top-right-radius: 2px;
+  font-family: 'Inter', sans-serif; /* Fuente moderna para ti */
+}
+
+/* Nombre del remitente pequeño arriba */
+.sender-name {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-bottom: 4px;
+  font-weight: 600;
 }
 
 
