@@ -2,13 +2,12 @@ import React, { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { createClient } from '@supabase/supabase-js'
 import { jsPDF } from 'jspdf'
-import './App.css' // <--- IMPORTANTE: CONECTA EL DISEÑO
+import './App.css'
 
-// MODO SEGURO (PRODUCCIÓN)
+// 👇 MODO SEGURO (PRODUCCIÓN)
 const API_URL = import.meta.env.VITE_API_URL
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY
-
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
@@ -16,7 +15,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 const ROLES = [
   { 
     id: 'lawyer_general', name: 'Abogado General', icon: '⚖️', desc: 'Detecto riesgos legales y cláusulas abusivas.',
-    prompt: `Actúa como un abogado senior experto en derecho contractual. Analiza el documento buscando riesgos legales, ambigüedades y cláusulas abusivas.` 
+    prompt: `Actúa como un abogado senior experto en derecho contractual. Analiza el documento buscando riesgos legales, ambigüedades y cláusulas abusivas. Usa tablas para listar los riesgos si hay más de 3.` 
   },
   { 
     id: 'lawyer_labor', name: 'Laboralista', icon: '👷', desc: 'Reviso contratos laborales y despidos.',
@@ -24,7 +23,7 @@ const ROLES = [
   },
   { 
     id: 'auditor', name: 'Auditor Financiero', icon: '💰', desc: 'Busco errores numéricos y fugas.',
-    prompt: `Actúa como un auditor financiero (Big 4). Busca incoherencias numéricas, gastos duplicados y riesgos.` 
+    prompt: `Actúa como un auditor financiero (Big 4). Busca incoherencias numéricas. Si encuentras datos, preséntalos SIEMPRE en una tabla comparativa.` 
   },
   { 
     id: 'summarizer', name: 'Resumidor', icon: '📝', desc: 'Resumo lo esencial en segundos.',
@@ -72,61 +71,55 @@ export default function App() {
   const [pdfName, setPdfName] = useState('')
   const [uploading, setUploading] = useState(false)
 
-  // ESTADO ÚNICO DE MÓVIL
+  // Estado Móvil
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   
-  const chatEndRef = useRef<HTMLDivElement>(null)
+  // UX: Notificaciones y Créditos
+  const [notification, setNotification] = useState<{msg: string, type: 'error'|'success'|'info'} | null>(null)
   const [credits, setCredits] = useState(3)
+  const chatEndRef = useRef<HTMLDivElement>(null)
+
+  // Helper de Notificaciones (Toasts)
+  const showToast = (msg: string, type: 'error'|'success'|'info' = 'info') => {
+    setNotification({ msg, type })
+    setTimeout(() => setNotification(null), 3000)
+  }
 
   const useCredit = () => {
     if (credits > 0) { setCredits(prev => prev - 1); return true }
     return false
   }
 
-  // --- PDF ---
-  const downloadReport = () => {
-    try {
-      const doc = new jsPDF()
-      const margin = 15; let y = 20
-      doc.setFontSize(18); doc.setTextColor(37, 99, 235); doc.text(`Informe Nexus AI`, margin, y); y += 10
-      doc.setFontSize(10); doc.setTextColor(100); doc.text(`Archivo: ${pdfName || 'Sin nombre'}`, margin, y); y += 10
-      doc.line(margin, y, 195, y); y += 15
-      doc.setFontSize(11); doc.setTextColor(0)
-      
-      messages.forEach((msg) => {
-          doc.setFont("helvetica", "bold"); doc.text(msg.sender === 'user' ? 'TÚ:' : 'AGENTE:', margin, y); y += 6
-          doc.setFont("helvetica", "normal")
-          const cleanText = (msg.text || '').replace(/\*\*/g, '').replace(/#/g, '')
-          const splitText = doc.splitTextToSize(cleanText, 180)
-          doc.text(splitText, margin, y); y += (splitText.length * 6) + 10
-          if (y > 270) { doc.addPage(); y = 20 }
-      })
-      doc.save('Informe.pdf')
-    } catch (e) {
-      alert("Error al generar PDF. Inténtalo de nuevo.")
-    }
-  }
-
-  // --- EFECTOS ---
+  // --- EFECTOS DE SEGURIDAD Y UX ---
   useEffect(() => {
+    // 1. Prevenir cierre accidental si hay chat activo
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (chatStarted && messages.length > 1) {
+        e.preventDefault(); e.returnValue = ''; return ''
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    // 2. Control de sesión y tamaño pantalla
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session))
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
-    return () => { window.removeEventListener('resize', handleResize); subscription.unsubscribe() }
-  }, [])
+    
+    return () => { 
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      subscription.unsubscribe() 
+    }
+  }, [chatStarted, messages])
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages, loading])
-
-  // --- LÓGICA DE PANTALLAS ---
-  const showSidebar = !isMobile || (isMobile && !chatStarted)
-  const showChat = !isMobile || (isMobile && chatStarted)
 
   // --- ACCIONES ---
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true)
     const { error } = authMode === 'login' ? await supabase.auth.signInWithPassword({ email, password }) : await supabase.auth.signUp({ email, password })
-    setLoading(false); if (error) alert(error.message)
+    setLoading(false); if (error) showToast(error.message, 'error')
   }
 
   const handleLogout = async () => {
@@ -136,30 +129,28 @@ export default function App() {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return
-    if (credits <= 0) { alert(`🔒 Límite de sesión alcanzado. Recarga (F5) para limpiar.`); e.target.value = ''; return }
+    if (credits <= 0) { showToast(`🔒 Límite diario alcanzado.`, 'error'); e.target.value = ''; return }
     
     setUploading(true)
     const formData = new FormData(); formData.append('file', file)
     try {
       const res = await fetchWithRetry(`${API_URL}/api/upload`, { method: 'POST', body: formData })
-      if (!res.ok) throw new Error("Error al leer PDF")
+      if (!res.ok) throw new Error("Error leyendo PDF")
       const data = await res.json()
       
       setPdfText(data.extracted_text); setPdfName(data.filename); useCredit()
-      setMessages(prev => [...prev, { sender: 'agent', text: `✅ Leído: ${data.filename}. Te quedan ${credits-1} créditos.` }])
-    } catch (err: any) { alert('Error: ' + err.message) }
+      // Mensaje inicial con un poco de formato
+      setMessages(prev => [...prev, { sender: 'agent', text: `✅ **Documento recibido:** ${data.filename}\n\nHe extraído el contenido. Te quedan **${credits-1}** créditos.\n\n¿Qué quieres que analice?` }])
+    } catch (err: any) { showToast(err.message, 'error') }
     setUploading(false)
   }
 
-  // ⭐ NUEVA VERSIÓN: BIENVENIDA INSTANTÁNEA (UX MEJORADA)
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault()
-    // No llamamos al servidor. Creamos el mensaje localmente.
-    const roleDesc = ROLES.find(r => r.name === name)?.desc || 'Estoy listo para ayudarte.'
-    
+    const roleDesc = ROLES.find(r => r.name === name)?.desc || 'Listo.'
     setMessages([{ 
         sender: 'agent', 
-        text: `👋 Hola, soy tu **${name}**.\n\n${roleDesc}\n\n¿Qué duda tienes sobre el documento?` 
+        text: `👋 Hola, soy tu **${name}**.\n\n${roleDesc}\n\n¿En qué puedo ayudarte hoy?` 
     }])
     setChatStarted(true)
   }
@@ -175,26 +166,52 @@ export default function App() {
       })
       const data = await res.json()
       setMessages(prev => [...prev, { sender: 'agent', text: data.response }])
-    } catch (err) { setMessages(prev => [...prev, { sender: 'agent', text: "⚠️ Error de conexión." }]) }
+    } catch (err) { setMessages(prev => [...prev, { sender: 'agent', text: "⚠️ Error de conexión. Inténtalo de nuevo." }]) }
     setLoading(false)
   }
 
+  const downloadReport = () => {
+    try {
+      const doc = new jsPDF()
+      const margin = 15; let y = 20
+      doc.setFontSize(18); doc.setTextColor(37, 99, 235); doc.text(`Informe Nexus AI`, margin, y); y += 10
+      doc.setFontSize(10); doc.setTextColor(100); doc.text(`Archivo: ${pdfName || 'Sin nombre'}`, margin, y); y += 10
+      doc.line(margin, y, 195, y); y += 15
+      doc.setFontSize(11); doc.setTextColor(0)
+      messages.forEach((msg) => {
+          doc.setFont("helvetica", "bold"); doc.text(msg.sender === 'user' ? 'TÚ:' : 'AGENTE:', margin, y); y += 6
+          doc.setFont("helvetica", "normal")
+          const cleanText = (msg.text || '').replace(/\*\*/g, '').replace(/#/g, '')
+          const splitText = doc.splitTextToSize(cleanText, 180)
+          doc.text(splitText, margin, y); y += (splitText.length * 6) + 10
+          if (y > 270) { doc.addPage(); y = 20 }
+      })
+      doc.save(`Informe_${name.replace(/\s/g, '_')}.pdf`)
+      showToast("Informe descargado", "success")
+    } catch (e) { showToast("Error al generar PDF", "error") }
+  }
+
   // --- RENDERIZADO ---
+  const showSidebar = !isMobile || (isMobile && !chatStarted)
+  const showChat = !isMobile || (isMobile && chatStarted)
   
+  // Estilos inline (para estructura)
   const containerStyle: React.CSSProperties = { height: '100dvh', width: '100vw', background: '#f3f4f6', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: isMobile ? 0 : '20px', overflow: 'hidden' }
   const cardStyle: React.CSSProperties = { width: isMobile ? '100%' : '1000px', height: isMobile ? '100%' : '85vh', background: 'white', borderRadius: isMobile ? 0 : '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', display: 'flex', flexDirection: isMobile ? 'column' : 'row', overflow: 'hidden' }
   const btnStyle: React.CSSProperties = { padding: '14px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', width: '100%', fontSize: '1rem', cursor: 'pointer', fontWeight: '600' }
 
+  // Pantalla Login
   if (!session) return (
     <div style={containerStyle}>
+      {notification && <div style={{position:'fixed', top:'20px', left:'50%', transform:'translateX(-50%)', background: notification.type==='error'?'#fee2e2':'#dcfce7', color: notification.type==='error'?'#dc2626':'#16a34a', padding:'10px 20px', borderRadius:'30px', boxShadow:'0 4px 12px rgba(0,0,0,0.1)', zIndex:1000, fontWeight:'bold'}}><span>{notification.type==='error'?'⚠️':'✅'}</span> {notification.msg}</div>}
       <div style={{...cardStyle, width:'400px', height:'auto', flexDirection:'column', padding:'40px', borderRadius:'12px', border:'1px solid #e5e7eb'}}>
-        <h2 style={{color:'#2563eb', textAlign:'center', marginBottom:'20px'}}>🔐 Nexus AI Login</h2>
+        <h2 style={{color:'#2563eb', textAlign:'center', marginBottom:'20px'}}>🔐 Nexus AI</h2>
         <form onSubmit={handleAuth} style={{display:'flex', flexDirection:'column', gap:'15px'}}>
-          <input type="email" placeholder="Correo electrónico" value={email} onChange={e=>setEmail(e.target.value)} style={{padding:'14px', borderRadius:'8px', border:'1px solid #e5e7eb', fontSize:'16px'}} required />
+          <input type="email" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} style={{padding:'14px', borderRadius:'8px', border:'1px solid #e5e7eb', fontSize:'16px'}} required />
           <input type="password" placeholder="Contraseña" value={password} onChange={e=>setPassword(e.target.value)} style={{padding:'14px', borderRadius:'8px', border:'1px solid #e5e7eb', fontSize:'16px'}} required />
-          <button style={btnStyle} disabled={loading}>{loading ? 'Cargando...' : (authMode === 'login' ? 'Entrar' : 'Crear Cuenta')}</button>
+          <button style={btnStyle} disabled={loading}>{loading ? '...' : (authMode === 'login' ? 'Entrar' : 'Registrarme')}</button>
         </form>
-        <p style={{textAlign:'center', marginTop:'15px', color:'#6b7280', fontSize:'0.9rem'}} onClick={()=>setAuthMode(authMode==='login'?'register':'login')}>
+        <p style={{textAlign:'center', marginTop:'15px', color:'#6b7280', fontSize:'0.9rem', cursor:'pointer'}} onClick={()=>setAuthMode(authMode==='login'?'register':'login')}>
           {authMode==='login' ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Entra'}
         </p>
       </div>
@@ -203,43 +220,38 @@ export default function App() {
 
   return (
     <div style={containerStyle}>
+      {/* TOAST FLOTANTE */}
+      {notification && <div style={{position:'fixed', top:'20px', left:'50%', transform:'translateX(-50%)', background: notification.type==='error'?'#fee2e2':'#dcfce7', color: notification.type==='error'?'#dc2626':'#16a34a', padding:'10px 20px', borderRadius:'30px', boxShadow:'0 4px 12px rgba(0,0,0,0.1)', zIndex:1000, fontWeight:'bold', display:'flex', alignItems:'center', gap:'8px'}}><span>{notification.type==='error'?'⚠️':'✅'}</span> {notification.msg}</div>}
+
       <div style={cardStyle}>
         
-        {/* SIDEBAR (MENÚ) */}
+        {/* MENÚ LATERAL */}
         {showSidebar && (
           <div style={{ width: isMobile ? '100%' : '350px', padding: '16px', borderRight: '1px solid #e5e7eb', background: '#f8fafc', overflowY: 'auto' }}>
             <div style={{marginBottom:'20px', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
               <h2 style={{color:'#2563eb', fontSize:'1.4rem', fontWeight:'bold'}}>Nexus AI 🛡️</h2>
-              <span style={{background: credits>0?'#dcfce7':'#fee2e2', color: credits>0?'#16a34a':'#dc2626', padding:'4px 10px', borderRadius:'20px', fontSize:'0.8rem', fontWeight:'bold'}}>
-                💎 {credits}
-              </span>
+              <span style={{background: credits>0?'#dcfce7':'#fee2e2', color: credits>0?'#16a34a':'#dc2626', padding:'4px 10px', borderRadius:'20px', fontSize:'0.8rem', fontWeight:'bold'}}>💎 {credits}</span>
             </div>
-
             <div style={{display:'flex', flexDirection:'column', gap:'10px'}}>
-              <label style={{fontSize:'0.8rem', color:'#6b7280', fontWeight:'bold'}}>1. ELIGE EXPERTO</label>
+              <label style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'bold', letterSpacing:'0.5px'}}>1. SELECCIONA EXPERTO</label>
               {ROLES.map(r => (
                 <div key={r.id} onClick={()=>{setName(r.name); setPersona(r.prompt)}} style={{
-                  padding:'16px', 
-                  border: persona===r.prompt ? '2px solid #2563eb' : '1px solid #e5e7eb', 
-                  borderRadius:'10px', 
-                  background: persona===r.prompt ? '#eff6ff' : 'white', 
-                  cursor:'pointer'
+                  padding:'16px', border: persona===r.prompt ? '2px solid #2563eb' : '1px solid #e2e8f0', 
+                  borderRadius:'10px', background: persona===r.prompt ? '#eff6ff' : 'white', cursor:'pointer', transition: 'all 0.2s'
                 }}>
-                  <div style={{fontWeight:'bold', display:'flex', gap:'8px'}}><span>{r.icon}</span> {r.name}</div>
-                  <div style={{fontSize:'0.8rem', color:'#6b7280', marginTop:'4px'}}>{r.desc}</div>
+                  <div style={{fontWeight:'bold', display:'flex', gap:'8px', color:'#1e293b'}}><span>{r.icon}</span> {r.name}</div>
+                  <div style={{fontSize:'0.8rem', color:'#64748b', marginTop:'4px'}}>{r.desc}</div>
                 </div>
               ))}
             </div>
-
-            <div style={{marginTop:'20px', padding:'15px', border:'1px dashed #2563eb', borderRadius:'10px', background:'white'}}>
-              <label style={{fontSize:'0.8rem', color:'#1e40af', fontWeight:'bold', marginBottom:'5px', display:'block'}}>2. SUBIR PDF</label>
-              <input type="file" onChange={handleFileUpload} accept="application/pdf" disabled={uploading} style={{fontSize:'0.9rem', width:'100%'}} />
-              {pdfName && <p style={{fontSize:'0.8rem', color:'green', marginTop:'5px'}}>✅ {pdfName}</p>}
+            <div style={{marginTop:'20px', padding:'15px', border:'1px dashed #94a3b8', borderRadius:'10px', background:'white'}}>
+              <label style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'bold', marginBottom:'8px', display:'block', letterSpacing:'0.5px'}}>2. SUBIR DOCUMENTO</label>
+              <input type="file" onChange={handleFileUpload} accept="application/pdf" disabled={uploading} style={{fontSize:'0.85rem', width:'100%'}} />
+              {pdfName && <p style={{fontSize:'0.8rem', color:'#15803d', marginTop:'5px', fontWeight:'600'}}>✅ {pdfName}</p>}
             </div>
-
-            <div style={{marginTop:'auto', paddingTop:'20px'}}>
-               <button onClick={handleCreate} disabled={!persona} style={btnStyle}>Iniciar Chat</button>
-               <button onClick={handleLogout} style={{...btnStyle, background:'white', color:'#ef4444', border:'1px solid #ef4444', marginTop:'10px'}}>Cerrar Sesión</button>
+            <div style={{marginTop:'auto', paddingTop:'20px', display:'flex', flexDirection:'column', gap:'10px'}}>
+               <button onClick={handleCreate} disabled={!persona} style={btnStyle}>Iniciar Análisis</button>
+               <button onClick={handleLogout} style={{...btnStyle, background:'white', color:'#ef4444', border:'1px solid #ef4444'}}>Cerrar Sesión</button>
             </div>
           </div>
         )}
@@ -247,43 +259,60 @@ export default function App() {
         {/* CHAT */}
         {showChat && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', background:'white' }}>
-            <div style={{padding:'16px', borderBottom:'1px solid #e5e7eb', display:'flex', alignItems:'center', gap:'10px', background:'white', boxShadow:'0 2px 4px rgba(0,0,0,0.05)', zIndex:10}}>
-              {isMobile && <button onClick={()=>setChatStarted(false)} style={{background:'none', border:'none', fontSize:'1.5rem', cursor:'pointer'}}>⬅</button>}
-              <div>
-                <strong style={{display:'block'}}>{name || 'Asistente'}</strong>
-                <span onClick={downloadReport} style={{fontSize:'0.8rem', color:'#2563eb', cursor:'pointer'}}>📥 Descargar PDF</span>
+            <div style={{padding:'16px', borderBottom:'1px solid #e2e8f0', display:'flex', alignItems:'center', gap:'10px', background:'white', boxShadow:'0 2px 4px rgba(0,0,0,0.02)', zIndex:10, justifyContent:'space-between'}}>
+              <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                {isMobile && <button onClick={()=>setChatStarted(false)} style={{background:'none', border:'none', fontSize:'1.5rem', cursor:'pointer'}}>⬅</button>}
+                <div>
+                  <strong style={{display:'block', color:'#1e293b'}}>{name}</strong>
+                  <span style={{fontSize:'0.75rem', color:'#64748b'}}>Nexus AI v1.0</span>
+                </div>
+              </div>
+              <div style={{display:'flex', gap:'15px', alignItems:'center'}}>
+                  <span onClick={downloadReport} style={{fontSize:'0.85rem', color:'#2563eb', cursor:'pointer', fontWeight:'600', display:'flex', alignItems:'center', gap:'4px'}} title="Descargar Informe">📥 PDF</span>
+                  <span onClick={() => { if(confirm("¿Borrar chat? (El PDF se mantiene)")) setMessages([]) }} style={{fontSize:'1.2rem', cursor:'pointer'}} title="Limpiar Chat">🧹</span>
               </div>
             </div>
 
-            <div style={{flex:1, padding:'20px', overflowY:'auto', background:'#f9fafb', display:'flex', flexDirection:'column', gap:'15px'}}>
+            <div style={{flex:1, padding:'20px', overflowY:'auto', background:'#f8fafc', display:'flex', flexDirection:'column', gap:'15px'}}>
               {messages.map((m,i)=>(
-                <div key={i} style={{alignSelf: m.sender==='user'?'flex-end':'flex-start', maxWidth:'85%'}}>
+                <div key={i} style={{alignSelf: m.sender==='user'?'flex-end':'flex-start', maxWidth:'90%'}}>
                   <div style={{
-                    padding:'12px 16px', 
-                    borderRadius:'16px', 
+                    padding:'12px 18px', borderRadius:'16px', 
                     background: m.sender==='user'?'#2563eb':'white', 
-                    color: m.sender==='user'?'white':'#1f2937',
-                    boxShadow:'0 1px 2px rgba(0,0,0,0.1)',
-                    border: m.sender==='agent'?'1px solid #e5e7eb':'none'
+                    color: m.sender==='user'?'white':'#1e293b',
+                    boxShadow:'0 2px 4px rgba(0,0,0,0.05)',
+                    border: m.sender==='agent'?'1px solid #e2e8f0':'none',
+                    position: 'relative'
                   }}>
                     <ReactMarkdown components={{ strong: ({node, ...props}) => <span style={{fontWeight:'bold', color: m.sender==='user'?'#fde047':'inherit'}} {...props}/> }}>
                       {m.text}
                     </ReactMarkdown>
+                    
+                    {/* BOTÓN COPIAR (Solo Agente) */}
+                    {m.sender === 'agent' && (
+                      <button onClick={() => { navigator.clipboard.writeText(m.text); showToast("Copiado!", "success") }} 
+                        style={{position: 'absolute', top: '8px', right: '8px', background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.5, fontSize:'0.9rem'}} title="Copiar">
+                        📋
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
               <div ref={chatEndRef}/>
-              {loading && !uploading && <div style={{padding:'10px', color:'#6b7280', fontSize:'0.9rem'}}>Escribiendo...</div>}
+              {loading && !uploading && <div style={{padding:'10px', color:'#64748b', fontSize:'0.85rem', fontStyle:'italic'}}>Analizando...</div>}
             </div>
 
-            <form onSubmit={handleSend} style={{padding:'15px', borderTop:'1px solid #e5e7eb', display:'flex', gap:'10px', background:'white'}}>
-              <input 
+            {/* ÁREA DE TEXTO MEJORADA */}
+            <form onSubmit={handleSend} style={{padding:'15px', borderTop:'1px solid #e2e8f0', display:'flex', gap:'10px', background:'white', alignItems:'flex-end'}}>
+              <textarea 
                 value={inputMsg} 
-                onChange={e=>setInputMsg(e.target.value)} 
-                placeholder="Escribe tu pregunta..." 
-                style={{flex:1, padding:'14px', borderRadius:'10px', border:'1px solid #e5e7eb', fontSize:'16px', outline:'none'}} 
+                onChange={e=>setInputMsg(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(e) } }}
+                placeholder="Escribe aquí... (Shift+Enter para saltar línea)" 
+                rows={1}
+                style={{flex:1, padding:'14px', borderRadius:'10px', border:'1px solid #e2e8f0', fontSize:'16px', outline:'none', resize:'none', minHeight:'50px', maxHeight:'120px', fontFamily:'inherit'}} 
               />
-              <button style={{...btnStyle, width:'auto', padding:'0 20px', borderRadius:'10px'}}>➤</button>
+              <button disabled={loading} style={{...btnStyle, width:'auto', padding:'0 20px', borderRadius:'10px', height:'52px', display:'flex', alignItems:'center', justifyContent:'center'}}>➤</button>
             </form>
           </div>
         )}
@@ -291,7 +320,6 @@ export default function App() {
     </div>
   )
 }
-
 
 
 
