@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm' // <--- IMPORTANTE: Para las tablas
 import { createClient } from '@supabase/supabase-js'
 import { jsPDF } from 'jspdf'
-import remarkGfm from 'remark-gfm'
 import './App.css'
 
-// 👇 MODO SEGURO (PRODUCCIÓN)
+// 👇 MODO SEGURO (VARIABLES DE ENTORNO)
 const API_URL = import.meta.env.VITE_API_URL
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY
@@ -80,7 +80,7 @@ export default function App() {
   const [credits, setCredits] = useState(3)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  // Helper de Notificaciones (Toasts)
+  // Helper de Notificaciones
   const showToast = (msg: string, type: 'error'|'success'|'info' = 'info') => {
     setNotification({ msg, type })
     setTimeout(() => setNotification(null), 3000)
@@ -91,9 +91,8 @@ export default function App() {
     return false
   }
 
-  // --- EFECTOS DE SEGURIDAD Y UX ---
+  // --- EFECTOS ---
   useEffect(() => {
-    // 1. Prevenir cierre accidental si hay chat activo
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (chatStarted && messages.length > 1) {
         e.preventDefault(); e.returnValue = ''; return ''
@@ -101,7 +100,6 @@ export default function App() {
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
 
-    // 2. Control de sesión y tamaño pantalla
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session))
     const handleResize = () => setIsMobile(window.innerWidth < 768)
@@ -140,7 +138,6 @@ export default function App() {
       const data = await res.json()
       
       setPdfText(data.extracted_text); setPdfName(data.filename); useCredit()
-      // Mensaje inicial con un poco de formato
       setMessages(prev => [...prev, { sender: 'agent', text: `✅ **Documento recibido:** ${data.filename}\n\nHe extraído el contenido. Te quedan **${credits-1}** créditos.\n\n¿Qué quieres que analice?` }])
     } catch (err: any) { showToast(err.message, 'error') }
     setUploading(false)
@@ -196,12 +193,10 @@ export default function App() {
   const showSidebar = !isMobile || (isMobile && !chatStarted)
   const showChat = !isMobile || (isMobile && chatStarted)
   
-  // Estilos inline (para estructura)
   const containerStyle: React.CSSProperties = { height: '100dvh', width: '100vw', background: '#f3f4f6', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: isMobile ? 0 : '20px', overflow: 'hidden' }
   const cardStyle: React.CSSProperties = { width: isMobile ? '100%' : '1000px', height: isMobile ? '100%' : '85vh', background: 'white', borderRadius: isMobile ? 0 : '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', display: 'flex', flexDirection: isMobile ? 'column' : 'row', overflow: 'hidden' }
   const btnStyle: React.CSSProperties = { padding: '14px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', width: '100%', fontSize: '1rem', cursor: 'pointer', fontWeight: '600' }
 
-  // Pantalla Login
   if (!session) return (
     <div style={containerStyle}>
       {notification && <div style={{position:'fixed', top:'20px', left:'50%', transform:'translateX(-50%)', background: notification.type==='error'?'#fee2e2':'#dcfce7', color: notification.type==='error'?'#dc2626':'#16a34a', padding:'10px 20px', borderRadius:'30px', boxShadow:'0 4px 12px rgba(0,0,0,0.1)', zIndex:1000, fontWeight:'bold'}}><span>{notification.type==='error'?'⚠️':'✅'}</span> {notification.msg}</div>}
@@ -247,41 +242,24 @@ export default function App() {
             </div>
             <div style={{marginTop:'20px', padding:'15px', border:'1px dashed #94a3b8', borderRadius:'10px', background:'white'}}>
               <label style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'bold', marginBottom:'8px', display:'block', letterSpacing:'0.5px'}}>2. SUBIR DOCUMENTO</label>
-            {/* ZONA DE SUBIDA PERSONALIZADA */}
-            <div style={{marginTop:'20px'}}>
-              <label style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'bold', letterSpacing:'0.5px', marginBottom:'8px', display:'block'}}>
-                2. SUBIR DOCUMENTO
-              </label>
-              
               <label style={{
                 display:'flex', alignItems:'center', justifyContent:'center', gap:'10px',
                 padding:'15px', border:'2px dashed #cbd5e1', borderRadius:'10px',
                 cursor: uploading ? 'not-allowed' : 'pointer',
                 background: '#f8fafc', color: '#64748b', transition: 'all 0.2s'
               }}>
-                {/* El input real está oculto pero funciona */}
-                <input 
-                  type="file" 
-                  onChange={handleFileUpload} 
-                  accept="application/pdf" 
-                  disabled={uploading} 
-                  style={{display:'none'}} 
-                />
-                
+                <input type="file" onChange={handleFileUpload} accept="application/pdf" disabled={uploading} style={{display:'none'}} />
                 <span style={{fontSize:'1.5rem'}}>📂</span>
-                <span style={{fontSize:'0.9rem', fontWeight:'500'}}>
-                  {uploading ? 'Procesando...' : (pdfName || 'Toca para elegir PDF')}
-                </span>
+                <span style={{fontSize:'0.9rem', fontWeight:'500'}}>{uploading ? 'Procesando...' : (pdfName || 'Toca para elegir PDF')}</span>
               </label>
-              
-              {/* Mensaje de éxito sutil debajo */}
-              {pdfName && !uploading && (
-                <p style={{fontSize:'0.75rem', color:'#15803d', marginTop:'6px', textAlign:'center'}}>
-                  ✅ Archivo listo para analizar
-                </p>
-              )}
+              {pdfName && !uploading && <p style={{fontSize:'0.75rem', color:'#15803d', marginTop:'6px', textAlign:'center'}}>✅ Archivo listo</p>}
             </div>
-                    )}
+            <div style={{marginTop:'auto', paddingTop:'20px', display:'flex', flexDirection:'column', gap:'10px'}}>
+               <button onClick={handleCreate} disabled={!persona} style={btnStyle}>Iniciar Análisis</button>
+               <button onClick={handleLogout} style={{...btnStyle, background:'white', color:'#ef4444', border:'1px solid #ef4444'}}>Cerrar Sesión</button>
+            </div>
+          </div>
+        )}
 
         {/* CHAT */}
         {showChat && (
@@ -296,7 +274,7 @@ export default function App() {
               </div>
               <div style={{display:'flex', gap:'15px', alignItems:'center'}}>
                   <span onClick={downloadReport} style={{fontSize:'0.85rem', color:'#2563eb', cursor:'pointer', fontWeight:'600', display:'flex', alignItems:'center', gap:'4px'}} title="Descargar Informe">📥 PDF</span>
-                  <span onClick={() => { if(confirm("¿Borrar chat? (El PDF se mantiene)")) setMessages([]) }} style={{fontSize:'1.2rem', cursor:'pointer'}} title="Limpiar Chat">🧹</span>
+                  <span onClick={() => { if(confirm("¿Borrar chat?")) setMessages([]) }} style={{fontSize:'1.2rem', cursor:'pointer'}} title="Limpiar Chat">🧹</span>
               </div>
             </div>
 
@@ -311,17 +289,14 @@ export default function App() {
                     border: m.sender==='agent'?'1px solid #e2e8f0':'none',
                     position: 'relative'
                   }}>
-                    <ReactMarkdown components={{ strong: ({node, ...props}) => <span style={{fontWeight:'bold', color: m.sender==='user'?'#fde047':'inherit'}} {...props}/> }}>
+                    {/* AQUÍ ESTABA EL ERROR: AHORA ESTÁ CORREGIDO 👇 */}
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{ strong: ({node, ...props}) => <span style={{fontWeight:'bold', color: m.sender==='user'?'#fde047':'inherit'}} {...props}/> }}
+                    >
                       {m.text}
                     </ReactMarkdown>
-                    <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]} // <--- ESTO ACTIVA LAS TABLAS
-                    components={{ ... }}
-                    >
-                  {m.text}
-                  </ReactMarkdown>
                     
-                    {/* BOTÓN COPIAR (Solo Agente) */}
                     {m.sender === 'agent' && (
                       <button onClick={() => { navigator.clipboard.writeText(m.text); showToast("Copiado!", "success") }} 
                         style={{position: 'absolute', top: '8px', right: '8px', background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.5, fontSize:'0.9rem'}} title="Copiar">
@@ -335,7 +310,6 @@ export default function App() {
               {loading && !uploading && <div style={{padding:'10px', color:'#64748b', fontSize:'0.85rem', fontStyle:'italic'}}>Analizando...</div>}
             </div>
 
-            {/* ÁREA DE TEXTO MEJORADA */}
             <form onSubmit={handleSend} style={{padding:'15px', borderTop:'1px solid #e2e8f0', display:'flex', gap:'10px', background:'white', alignItems:'flex-end'}}>
               <textarea 
                 value={inputMsg} 
@@ -353,8 +327,6 @@ export default function App() {
     </div>
   )
 }
-
-
 
 
 
