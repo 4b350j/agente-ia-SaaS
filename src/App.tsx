@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { createClient } from '@supabase/supabase-js'
 import { jsPDF } from 'jspdf'
+import remarkGfm from 'remark-gfm'
 import './App.css'
 
 // 👇 MODO SEGURO (PRODUCCIÓN)
@@ -287,6 +288,12 @@ export default function App() {
                     <ReactMarkdown components={{ strong: ({node, ...props}) => <span style={{fontWeight:'bold', color: m.sender==='user'?'#fde047':'inherit'}} {...props}/> }}>
                       {m.text}
                     </ReactMarkdown>
+                    <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]} // <--- ESTO ACTIVA LAS TABLAS
+                    components={{ ... }}
+                    >
+                  {m.text}
+                  </ReactMarkdown>
                     
                     {/* BOTÓN COPIAR (Solo Agente) */}
                     {m.sender === 'agent' && (
@@ -320,6 +327,7 @@ export default function App() {
     </div>
   )
 }
+
 
 
 
