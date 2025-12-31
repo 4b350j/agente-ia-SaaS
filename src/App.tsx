@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm' // Para tablas bonitas
+import remarkGfm from 'remark-gfm' // Importante: Para tablas estilo Excel
 import { createClient } from '@supabase/supabase-js'
 import { jsPDF } from 'jspdf'
 import './App.css'
@@ -99,6 +99,7 @@ export default function App() {
 
   // --- EFECTOS ---
   useEffect(() => {
+    // Protección contra cierre accidental
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (chatStarted && messages.length > 1) {
         e.preventDefault(); e.returnValue = ''; return ''
@@ -106,6 +107,7 @@ export default function App() {
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
 
+    // Auth y Resize
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session))
     const handleResize = () => setIsMobile(window.innerWidth < 768)
@@ -118,6 +120,7 @@ export default function App() {
     }
   }, [chatStarted, messages])
 
+  // Auto-scroll al fondo
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages, loading])
 
   // --- ACCIONES ---
@@ -144,8 +147,7 @@ export default function App() {
       const data = await res.json()
       
       setPdfText(data.extracted_text); setPdfName(data.filename); useCredit()
-      // Mensaje de sistema (invisible al usuario como chat, pero visible como contexto)
-      // Opcional: mostrar un mensaje de éxito en el chat
+      // Mensaje de sistema en el chat (opcional)
       setMessages(prev => [...prev, { sender: 'agent', text: `✅ **Documento recibido:** ${data.filename}\n\nHe extraído el contenido. Te quedan **${credits-1}** créditos.` }])
     } catch (err: any) { showToast(err.message, 'error') }
     setUploading(false)
@@ -153,7 +155,6 @@ export default function App() {
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault()
-    // Ya no añadimos mensaje inicial aquí para usar el Empty State, o ponemos uno breve.
     setChatStarted(true)
   }
   
@@ -202,7 +203,7 @@ export default function App() {
   const cardStyle: React.CSSProperties = { width: isMobile ? '100%' : '1000px', height: isMobile ? '100%' : '85vh', background: 'white', borderRadius: isMobile ? 0 : '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', display: 'flex', flexDirection: isMobile ? 'column' : 'row', overflow: 'hidden' }
   const btnStyle: React.CSSProperties = { padding: '14px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', width: '100%', fontSize: '1rem', cursor: 'pointer', fontWeight: '600' }
 
-  // 1. LOGIN
+  // 1. PANTALLA DE LOGIN
   if (!session) return (
     <div style={containerStyle}>
       {notification && <div style={{position:'fixed', top:'20px', left:'50%', transform:'translateX(-50%)', background: notification.type==='error'?'#fee2e2':'#dcfce7', color: notification.type==='error'?'#dc2626':'#16a34a', padding:'10px 20px', borderRadius:'30px', boxShadow:'0 4px 12px rgba(0,0,0,0.1)', zIndex:1000, fontWeight:'bold'}}><span>{notification.type==='error'?'⚠️':'✅'}</span> {notification.msg}</div>}
@@ -220,10 +221,10 @@ export default function App() {
     </div>
   )
 
-  // 2. APP PRINCIPAL
+  // 2. APLICACIÓN PRINCIPAL
   return (
     <div style={containerStyle}>
-      {/* TOAST FLOTANTE */}
+      {/* Notificación Flotante (Toast) */}
       {notification && <div style={{position:'fixed', top:'20px', left:'50%', transform:'translateX(-50%)', background: notification.type==='error'?'#fee2e2':'#dcfce7', color: notification.type==='error'?'#dc2626':'#16a34a', padding:'10px 20px', borderRadius:'30px', boxShadow:'0 4px 12px rgba(0,0,0,0.1)', zIndex:1000, fontWeight:'bold', display:'flex', alignItems:'center', gap:'8px', animation:'slideIn 0.3s'}}><span>{notification.type==='error'?'⚠️':'✅'}</span> {notification.msg}</div>}
 
       <div style={cardStyle}>
@@ -232,12 +233,13 @@ export default function App() {
         {showSidebar && (
           <div style={{ width: isMobile ? '100%' : '350px', padding: '20px', borderRight: '1px solid #e5e7eb', background: '#f8fafc', overflowY: 'auto', display:'flex', flexDirection:'column' }}>
             <div style={{marginBottom:'25px', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-              <h2 style={{color:'#2563eb', fontSize:'1.3rem', fontWeight:'bold', margin:0}}>Nexus AI 🛡️</h2>
+              {/* Título de marca actualizado */}
+              <h2 style={{color:'#2563eb', fontSize:'1.3rem', fontWeight:'bold', margin:0}}>Nexus AI | Auditoría 🛡️</h2>
               <span style={{background: credits>0?'#dcfce7':'#fee2e2', color: credits>0?'#16a34a':'#dc2626', padding:'4px 10px', borderRadius:'20px', fontSize:'0.75rem', fontWeight:'bold'}}>💎 {credits}</span>
             </div>
             
             <div style={{display:'flex', flexDirection:'column', gap:'12px', marginBottom:'20px'}}>
-              <label style={{fontSize:'0.7rem', color:'#64748b', fontWeight:'700', letterSpacing:'0.5px'}}>1. EXPERTO</label>
+              <label style={{fontSize:'0.7rem', color:'#64748b', fontWeight:'700', letterSpacing:'0.5px'}}>1. SELECCIONA EXPERTO</label>
               {ROLES.map(r => (
                 <div key={r.id} onClick={()=>{setName(r.name); setPersona(r.prompt)}} style={{
                   padding:'12px', border: persona===r.prompt ? '2px solid #2563eb' : '1px solid #e2e8f0', 
@@ -253,7 +255,7 @@ export default function App() {
             </div>
             
             <div style={{marginBottom:'auto'}}>
-              <label style={{fontSize:'0.7rem', color:'#64748b', fontWeight:'700', letterSpacing:'0.5px', marginBottom:'8px', display:'block'}}>2. DOCUMENTO</label>
+              <label style={{fontSize:'0.7rem', color:'#64748b', fontWeight:'700', letterSpacing:'0.5px', marginBottom:'8px', display:'block'}}>2. SUBIR DOCUMENTO</label>
               <label style={{
                 display:'flex', alignItems:'center', justifyContent:'center', gap:'10px',
                 padding:'15px', border:'2px dashed #cbd5e1', borderRadius:'10px',
@@ -269,7 +271,7 @@ export default function App() {
             </div>
 
             <div style={{marginTop:'20px', display:'flex', flexDirection:'column', gap:'10px'}}>
-               <button onClick={handleCreate} disabled={!persona} style={btnStyle}>Iniciar Chat</button>
+               <button onClick={handleCreate} disabled={!persona} style={btnStyle}>Iniciar Análisis</button>
                <button onClick={handleLogout} style={{...btnStyle, background:'transparent', color:'#ef4444', border:'1px solid #ef4444', fontSize:'0.9rem'}}>Cerrar Sesión</button>
             </div>
           </div>
@@ -290,7 +292,7 @@ export default function App() {
               </div>
               <div style={{display:'flex', gap:'15px'}}>
                   <button onClick={downloadReport} style={{background:'none', border:'none', fontSize:'0.85rem', color:'#2563eb', cursor:'pointer', fontWeight:'600'}} title="Descargar Informe">📥 PDF</button>
-                  <button onClick={() => { if(confirm("¿Limpiar historial?")) setMessages([]) }} style={{background:'none', border:'none', fontSize:'1.2rem', cursor:'pointer'}} title="Limpiar">🧹</button>
+                  <button onClick={() => { if(confirm("¿Borrar historial de chat?")) setMessages([]) }} style={{background:'none', border:'none', fontSize:'1.2rem', cursor:'pointer'}} title="Limpiar">🧹</button>
               </div>
             </div>
 
@@ -306,7 +308,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* LISTA DE MENSAJES PRO */}
+              {/* LISTA DE MENSAJES CON DISEÑO PRO (Avatares fuera) */}
               {messages.map((m, i) => {
                 const isUser = m.sender === 'user';
                 const avatarIcon = isUser ? '👤' : (ROLES.find(r => r.name === name)?.icon || '🤖');
@@ -321,6 +323,7 @@ export default function App() {
                       <span className="sender-name" style={{textAlign: isUser ? 'right' : 'left'}}>{isUser ? 'Tú' : name}</span>
                       
                       <div className={`bubble ${isUser ? 'user' : 'agent'}`}>
+                        {/* Renderizado Markdown con Soporte para Tablas */}
                         <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ 
                             strong: ({node, ...props}) => <span style={{fontWeight:'700', color: isUser?'#fde047':'#1e293b'}} {...props}/>,
                             table: ({node, ...props}) => <div style={{overflowX:'auto'}}><table {...props}/></div> 
@@ -328,7 +331,7 @@ export default function App() {
                           {m.text}
                         </ReactMarkdown>
 
-                        {/* Botón copiar (Solo Agente) */}
+                        {/* Botón copiar (Solo visible en mensajes del Agente) */}
                         {!isUser && (
                           <div style={{marginTop:'12px', paddingTop:'8px', borderTop:'1px solid #f1f5f9', display:'flex', justifyContent:'flex-end'}}>
                              <button onClick={() => { navigator.clipboard.writeText(m.text); showToast("Texto copiado", "success") }}
@@ -343,7 +346,7 @@ export default function App() {
                 )
               })}
 
-              {/* Indicador de Escritura */}
+              {/* Indicador de Escritura Animado (Typing Indicator) */}
               {loading && !uploading && (
                 <div style={{display:'flex', gap:'10px', marginBottom:'20px', animation:'slideIn 0.3s'}}>
                    <div className="avatar" style={{background:'white', border:'1px solid #e2e8f0'}}>{ROLES.find(r => r.name === name)?.icon}</div>
@@ -355,10 +358,10 @@ export default function App() {
               <div ref={chatEndRef}/>
             </div>
 
-            {/* Zona de Input */}
+            {/* Zona de Input y Chips */}
             <div style={{background:'white', borderTop:'1px solid #e2e8f0'}}>
               
-              {/* CHIPS DE SUGERENCIAS */}
+              {/* CHIPS DE SUGERENCIAS (Solo si no está cargando y el chat es corto) */}
               {!loading && messages.length < 10 && (
                 <div style={{display:'flex', gap:'8px', padding:'12px 20px', overflowX:'auto', scrollbarWidth:'none'}}>
                   {SUGGESTIONS[ROLES.find(r=>r.name===name)?.id || 'lawyer_general']?.map((sug, i) => (
@@ -369,7 +372,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* Formulario */}
+              {/* Formulario de Envío (Textarea inteligente) */}
               <form onSubmit={handleSend} style={{padding:'10px 20px 20px', display:'flex', gap:'12px', alignItems:'flex-end'}}>
                 <textarea 
                   value={inputMsg} 
