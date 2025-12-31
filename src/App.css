@@ -2,68 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 1. FUENTES Y BASES */
 body {
-  font-family: 'Inter', sans-serif; /* <--- CAMBIO DE FUENTE */
-  -webkit-font-smoothing: antialiased; /* Texto más nítido en Mac */
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: #1e293b;
+  line-height: 1.5;
 }
 
-/* LA REGLA DE ORO DEL DISEÑO WEB (Esto arregla el corte lateral)  */
-*, *::before, *::after {
-  box-sizing: border-box;
-}
+/* Regla de oro */
+*, *::before, *::after { box-sizing: border-box; }
 
-
-/* Animación para los puntitos de carga (...) */
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
-}
-.dot-animate {
-  animation: bounce 0.6s infinite alternate;
-}
-.dot-1 { animation-delay: 0s; }
-.dot-2 { animation-delay: 0.2s; }
-.dot-3 { animation-delay: 0.4s; }
-
-/* Estilos para que el texto de la IA (Markdown) se vea profesional */
-.markdown-body ul { 
-  list-style-type: disc; 
-  margin-left: 20px; 
-  margin-bottom: 10px;
-}
-.markdown-body ol { 
-  list-style-type: decimal; 
-  margin-left: 20px; 
-  margin-bottom: 10px;
-}
-.markdown-body p { 
-  margin-bottom: 8px; 
-}
-.markdown-body strong { 
-  font-weight: 700; 
-  color: inherit; /* Hereda el color (amarillo o negro según quien hable) */
-}
-/* --- PARCHE UNIVERSAL PARA MÓVILES Y NAVEGADORES --- */
-html, body {
-  overscroll-behavior-y: none; /* Evita el rebote elástico en Mac/iOS */
-  -webkit-overflow-scrolling: touch; /* Scroll suave */
-}
-
-/* Quitar destello azul al tocar en Android */
-* { -webkit-tap-highlight-color: transparent; }
-
-/* Scrollbars bonitas en Firefox y PC */
-* { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
-*::-webkit-scrollbar { width: 6px; }
-*::-webkit-scrollbar-track { background: transparent; }
-*::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
-
-/* Fallback para navegadores viejos */
-@supports not (height: 100dvh) {
-  .app-container-fallback { height: 100vh; }
-}
-
-/*  MEJORA 1: TABLAS PROFESIONALES (ESTILO EXCEL) */
+/* 2. TABLAS PROFESIONALES (Markdown) */
 .markdown-body table {
   width: 100%;
   border-collapse: collapse;
@@ -71,186 +21,142 @@ html, body {
   font-size: 0.9rem;
   background-color: white;
   border-radius: 8px;
-  overflow: hidden; /* Para que las esquinas redondeadas funcionen */
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border: 1px solid #e2e8f0;
 }
 
 .markdown-body th {
   background-color: #f8fafc;
-  color: #1e293b;
-  font-weight: 700;
+  color: #334155;
+  font-weight: 600;
   text-align: left;
-  padding: 12px;
+  padding: 12px 15px;
   border-bottom: 2px solid #e2e8f0;
 }
 
 .markdown-body td {
-  padding: 12px;
+  padding: 12px 15px;
   border-bottom: 1px solid #e2e8f0;
-  color: #334155;
-}
-
-.markdown-body tr:last-child td {
-  border-bottom: none;
-}
-
-/* Scroll lateral para tablas grandes en móvil */
-.markdown-body {
-  overflow-x: auto;
-}
-
-/* MEJORA 2: ESTILOS GLOBALES UX */
-/* Regla de oro para evitar cortes */
-*, *::before, *::after {
-  box-sizing: border-box;
-}
-
-/* Evitar rebote en iOS */
-html, body {
-  overscroll-behavior-y: none;
-}
-
-/*Indicador de escritura (Burbujas) */
-.typing-indicator {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 12px;
-}
-.typing-indicator span {
-  display: block;
-  width: 6px;
-  height: 6px;
-  background-color: #94a3b8;
-  border-radius: 50%;
-  animation: typing 1.4s infinite ease-in-out both;
-}
-.typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-.typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
-@keyframes typing {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
-}
-
-/*Chips de Sugerencias */
-.suggestion-chip {
-  background: white;
-  border: 1px solid #e2e8f0;
-  padding: 8px 14px;
-  border-radius: 20px;
-  font-size: 0.85rem;
   color: #475569;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 500;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
-.suggestion-chip:hover {
-  background: #eff6ff;
-  border-color: #2563eb;
-  color: #2563eb;
-  transform: translateY(-1px);
-}
-/* ---ANATOMÍA DEL CHAT --- */
 
-/* Animación de entrada suave */
+.markdown-body tr:last-child td { border-bottom: none; }
+
+/* 3. ANIMACIONES */
 @keyframes slideIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes typing {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+/* 4. COMPONENTES DEL CHAT (NUEVO) */
+
+/* Filas de mensaje */
 .message-row {
   display: flex;
-  gap: 15px;
-  margin-bottom: 25px; /* Más aire entre mensajes */
+  gap: 12px;
+  margin-bottom: 20px;
   animation: slideIn 0.3s ease-out forwards;
+  width: 100%;
 }
 
 .message-row.user {
-  flex-direction: row-reverse; /* Usuario a la derecha */
+  flex-direction: row-reverse;
 }
 
 /* Avatares */
 .avatar {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   flex-shrink: 0;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-/* Burbujas */
+/* Burbujas de texto */
 .bubble {
-  padding: 14px 20px;
+  padding: 12px 18px;
   border-radius: 12px;
-  max-width: 85%;
   line-height: 1.6;
   position: relative;
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  font-size: 0.95rem;
 }
 
 .bubble.agent {
   background: white;
   border: 1px solid #e2e8f0;
-  border-top-left-radius: 2px; /* Efecto "pico" de bocadillo */
+  border-top-left-radius: 2px;
   color: #334155;
-  /* TIPOGRAFÍA LEGAL: Fuente Serif para respuestas del abogado */
+  /* TIPOGRAFÍA LEGAL SERIF PARA EL AGENTE */
   font-family: 'Georgia', 'Merriweather', serif; 
-  font-size: 0.95rem;
 }
 
 .bubble.user {
   background: #2563eb;
   color: white;
   border-top-right-radius: 2px;
-  font-family: 'Inter', sans-serif; /* Fuente moderna para ti */
+  /* Sans-serif moderno para el usuario */
+  font-family: 'Inter', sans-serif; 
 }
 
-/* Nombre del remitente pequeño arriba */
 .sender-name {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: #94a3b8;
   margin-bottom: 4px;
   font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
-/* --- SCROLLBARS PERSONALIZADOS (Look Nativo) --- */
-
-/* Chrome, Edge, Safari */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* 5. INDICADOR DE "ESCRIBIENDO..." */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 2px;
 }
-
-::-webkit-scrollbar-track {
-  background: transparent; 
-}
-
-::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
+.typing-indicator span {
+  display: block;
+  width: 5px;
+  height: 5px;
   background-color: #94a3b8;
+  border-radius: 50%;
+  animation: typing 1.4s infinite ease-in-out both;
+}
+.typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+.typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+/* 6. CHIPS DE SUGERENCIAS */
+.suggestion-chip {
+  background: white;
+  border: 1px solid #e2e8f0;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
 
-/* Ocultar scrollbar en los chips de sugerencias pero permitir scroll */
-.suggestion-chip-container::-webkit-scrollbar {
-  display: none;
-}
-.suggestion-chip-container {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
-}
-
-/* Color de selección de texto (Marca de la casa) */
-::selection {
-  background: #bfdbfe; /* Azul claro */
-  color: #1e3a8a; /* Azul oscuro */
+.suggestion-chip:hover {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.1);
 }
 
+/* Scrollbars ocultas pero funcionales */
+.markdown-body { overflow-x: auto; }
