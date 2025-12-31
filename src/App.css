@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  font-family: 'Inter', sans-serif; /* <--- CAMBIO DE FUENTE */
+  -webkit-font-smoothing: antialiased; /* Texto más nítido en Mac */
+}
+
 /* LA REGLA DE ORO DEL DISEÑO WEB (Esto arregla el corte lateral)  */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -104,4 +109,5 @@ html, body {
 html, body {
   overscroll-behavior-y: none;
 }
+
 
