@@ -58,4 +58,50 @@ html, body {
   .app-container-fallback { height: 100vh; }
 }
 
+/*  MEJORA 1: TABLAS PROFESIONALES (ESTILO EXCEL) */
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 15px 0;
+  font-size: 0.9rem;
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden; /* Para que las esquinas redondeadas funcionen */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.markdown-body th {
+  background-color: #f8fafc;
+  color: #1e293b;
+  font-weight: 700;
+  text-align: left;
+  padding: 12px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.markdown-body td {
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.markdown-body tr:last-child td {
+  border-bottom: none;
+}
+
+/* Scroll lateral para tablas grandes en móvil */
+.markdown-body {
+  overflow-x: auto;
+}
+
+/* MEJORA 2: ESTILOS GLOBALES UX */
+/* Regla de oro para evitar cortes */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Evitar rebote en iOS */
+html, body {
+  overscroll-behavior-y: none;
+}
 
