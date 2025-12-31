@@ -247,15 +247,41 @@ export default function App() {
             </div>
             <div style={{marginTop:'20px', padding:'15px', border:'1px dashed #94a3b8', borderRadius:'10px', background:'white'}}>
               <label style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'bold', marginBottom:'8px', display:'block', letterSpacing:'0.5px'}}>2. SUBIR DOCUMENTO</label>
-              <input type="file" onChange={handleFileUpload} accept="application/pdf" disabled={uploading} style={{fontSize:'0.85rem', width:'100%'}} />
-              {pdfName && <p style={{fontSize:'0.8rem', color:'#15803d', marginTop:'5px', fontWeight:'600'}}>✅ {pdfName}</p>}
+            {/* ZONA DE SUBIDA PERSONALIZADA */}
+            <div style={{marginTop:'20px'}}>
+              <label style={{fontSize:'0.75rem', color:'#64748b', fontWeight:'bold', letterSpacing:'0.5px', marginBottom:'8px', display:'block'}}>
+                2. SUBIR DOCUMENTO
+              </label>
+              
+              <label style={{
+                display:'flex', alignItems:'center', justifyContent:'center', gap:'10px',
+                padding:'15px', border:'2px dashed #cbd5e1', borderRadius:'10px',
+                cursor: uploading ? 'not-allowed' : 'pointer',
+                background: '#f8fafc', color: '#64748b', transition: 'all 0.2s'
+              }}>
+                {/* El input real está oculto pero funciona */}
+                <input 
+                  type="file" 
+                  onChange={handleFileUpload} 
+                  accept="application/pdf" 
+                  disabled={uploading} 
+                  style={{display:'none'}} 
+                />
+                
+                <span style={{fontSize:'1.5rem'}}>📂</span>
+                <span style={{fontSize:'0.9rem', fontWeight:'500'}}>
+                  {uploading ? 'Procesando...' : (pdfName || 'Toca para elegir PDF')}
+                </span>
+              </label>
+              
+              {/* Mensaje de éxito sutil debajo */}
+              {pdfName && !uploading && (
+                <p style={{fontSize:'0.75rem', color:'#15803d', marginTop:'6px', textAlign:'center'}}>
+                  ✅ Archivo listo para analizar
+                </p>
+              )}
             </div>
-            <div style={{marginTop:'auto', paddingTop:'20px', display:'flex', flexDirection:'column', gap:'10px'}}>
-               <button onClick={handleCreate} disabled={!persona} style={btnStyle}>Iniciar Análisis</button>
-               <button onClick={handleLogout} style={{...btnStyle, background:'white', color:'#ef4444', border:'1px solid #ef4444'}}>Cerrar Sesión</button>
-            </div>
-          </div>
-        )}
+                    )}
 
         {/* CHAT */}
         {showChat && (
@@ -327,6 +353,7 @@ export default function App() {
     </div>
   )
 }
+
 
 
 
