@@ -218,4 +218,39 @@ html, body {
   font-weight: 600;
 }
 
+/* --- SCROLLBARS PERSONALIZADOS (Look Nativo) --- */
+
+/* Chrome, Edge, Safari */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent; 
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+
+/* Ocultar scrollbar en los chips de sugerencias pero permitir scroll */
+.suggestion-chip-container::-webkit-scrollbar {
+  display: none;
+}
+.suggestion-chip-container {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Color de selección de texto (Marca de la casa) */
+::selection {
+  background: #bfdbfe; /* Azul claro */
+  color: #1e3a8a; /* Azul oscuro */
+}
 
